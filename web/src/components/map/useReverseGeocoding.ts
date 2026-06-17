@@ -12,7 +12,8 @@ const ADDRESS_KEYS: string[][] = [
   ["city", "county", "town", "village", "municipality"],
   ["district", "city_district"],
   ["suburb", "neighbourhood"],
-  ["residential", "hamlet", "quarter"],
+  ["road"],
+  ["residential", "hamlet", "quarter", "house_number"],
 ];
 
 export interface ReverseGeoResult {
