@@ -60,7 +60,7 @@ export const useReverseGeocoding = (lat: number | undefined, lng: number | undef
         };
       } catch (error) {
         console.error("Failed to fetch reverse geocoding data:", error);
-        return null;
+        return { displayName: coordString, addressTag: "" };
       }
     },
     enabled: lat !== undefined && lng !== undefined,
