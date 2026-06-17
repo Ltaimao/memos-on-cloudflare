@@ -3,18 +3,42 @@ import { useQuery } from "@tanstack/react-query";
 const GEOCODING = {
   endpoint: "https://nominatim.openstreetmap.org/reverse",
   userAgent: "Memos/1.0 (https://github.com/usememos/memos)",
-  format: "json",
+  format: "jsonv2",
 } as const;
+
+/** Address hierarchy keys in priority order per level: 省/市/区/街道/具体地点 */
+const ADDRESS_KEYS: string[][] = [
+  ["state"],
+  ["city", "town", "village", "municipality"],
+  ["district", "county", "city_district"],
+  ["suburb", "neighbourhood"],
+  ["residential", "hamlet", "quarter"],
+];
+
+export interface ReverseGeoResult {
+  displayName: string;
+  addressTag: string;
+}
+
+function buildAddressTag(address: Record<string, string>): string {
+  const parts: string[] = [];
+  for (const keys of ADDRESS_KEYS) {
+    const value = keys.reduce((acc, k) => acc || address[k] || "", "");
+    if (value) parts.push(value);
+  }
+  return parts.length > 0 ? `#${parts.join("/")}` : "";
+}
 
 export const useReverseGeocoding = (lat: number | undefined, lng: number | undefined) => {
   return useQuery({
     queryKey: ["geocoding", lat, lng],
-    queryFn: async () => {
-      const coordString = `${lat?.toFixed(6)}, ${lng?.toFixed(6)}`;
-      if (lat === undefined || lng === undefined) return "";
+    queryFn: async (): Promise<ReverseGeoResult | null> => {
+      if (lat === undefined || lng === undefined) return null;
+
+      const coordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
       try {
-        const url = `${GEOCODING.endpoint}?lat=${lat}&lon=${lng}&format=${GEOCODING.format}`;
+        const url = `${GEOCODING.endpoint}?lat=${lat}&lon=${lng}&format=${GEOCODING.format}&addressdetails=1`;
         const response = await fetch(url, {
           headers: {
             "User-Agent": GEOCODING.userAgent,
@@ -27,10 +51,16 @@ export const useReverseGeocoding = (lat: number | undefined, lng: number | undef
         }
 
         const data = await response.json();
-        return (data?.display_name as string) || coordString;
+        const displayName: string = data?.display_name || coordString;
+        const address: Record<string, string> = data?.address || {};
+
+        return {
+          displayName,
+          addressTag: buildAddressTag(address),
+        };
       } catch (error) {
         console.error("Failed to fetch reverse geocoding data:", error);
-        return coordString;
+        return null;
       }
     },
     enabled: lat !== undefined && lng !== undefined,

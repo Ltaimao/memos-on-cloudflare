@@ -99,13 +99,13 @@ const InsertMenu = (props: InsertMenuProps) => {
     [locationState.position],
   );
 
-  const { data: displayName } = useReverseGeocoding(debouncedPosition?.lat, debouncedPosition?.lng);
+  const { data: geoResult } = useReverseGeocoding(debouncedPosition?.lat, debouncedPosition?.lng);
 
   useEffect(() => {
-    if (displayName) {
-      setPlaceholder(displayName);
+    if (geoResult?.displayName) {
+      setPlaceholder(geoResult.displayName);
     }
-  }, [displayName, setPlaceholder]);
+  }, [geoResult, setPlaceholder]);
 
   const isUploading = selectingFlag || isUploadingProp;
 

@@ -1,5 +1,7 @@
 import { create } from "@bufbuild/protobuf";
+import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUserGeneralSetting } from "@/hooks/useUserQueries";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
@@ -18,6 +20,14 @@ const PreferencesSection = () => {
   const t = useTranslate();
   const { currentUser, userGeneralSetting: generalSetting, refetchSettings } = useAuth();
   const { mutate: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
+  const [autoLocationEnabled, setAutoLocationEnabled] = useState(
+    () => typeof localStorage !== "undefined" && localStorage.getItem("auto-location-enabled") === "true",
+  );
+
+  const handleAutoLocationToggle = (checked: boolean) => {
+    setAutoLocationEnabled(checked);
+    localStorage.setItem("auto-location-enabled", String(checked));
+  };
 
   const handleLocaleSelectChange = (locale: Locale) => {
     // Apply locale immediately for instant UI feedback and persist to localStorage
@@ -108,6 +118,14 @@ const PreferencesSection = () => {
                   ))}
               </SelectContent>
             </Select>
+          </SettingListItem>
+        </SettingList>
+      </SettingGroup>
+
+      <SettingGroup title="自动定位" description="新建 memo 时自动获取位置并添加为层级标签" showSeparator>
+        <SettingList>
+          <SettingListItem label="自动定位" description="保存 location 字段和 #省/市/区/街道 标签到内容末尾">
+            <Switch checked={autoLocationEnabled} onCheckedChange={handleAutoLocationToggle} />
           </SettingListItem>
         </SettingList>
       </SettingGroup>

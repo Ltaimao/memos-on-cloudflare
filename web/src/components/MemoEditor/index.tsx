@@ -22,7 +22,7 @@ import {
 } from "./components";
 import { FOCUS_MODE_STYLES } from "./constants";
 import type { EditorRefActions } from "./Editor";
-import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
+import { useAudioRecorder, useAutoLocation, useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
 import { EditorProvider, useEditorContext } from "./state";
 import type { MemoEditorProps } from "./types";
@@ -106,6 +106,33 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
     void fetchSetting(InstanceSetting_Key.AI).catch(() => undefined);
   }, [currentUser, fetchSetting]);
+
+  const autoLocationEnabled = typeof localStorage !== "undefined" && localStorage.getItem("auto-location-enabled") === "true";
+
+  const handleLocationChange = useCallback(
+    (location: unknown) => {
+      dispatch(actions.setMetadata({ location }));
+    },
+    [dispatch, actions],
+  );
+
+  const appendContent = useCallback((text: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const content = editor.getContent();
+    // Move cursor to end
+    editor.insertText(text, content.length > 0 ? "\n\n" : "", "");
+    editor.scrollToCursor();
+  }, []);
+
+  useAutoLocation({
+    enabled: autoLocationEnabled,
+    isCreating: !memo,
+    isInitialized,
+    onLocationChange: handleLocationChange,
+    appendContent,
+  });
 
   const insertTranscribedText = useCallback((text: string) => {
     const editor = editorRef.current;
