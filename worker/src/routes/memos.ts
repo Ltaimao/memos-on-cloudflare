@@ -592,6 +592,9 @@ memoRoutes.get("/", authOptional, async (c) => {
   const filter = c.req.query("filter") || "";
   const orderBy = c.req.query("orderBy") || "";
   const state = c.req.query("state") || "NORMAL";
+  const sameDayAcrossYears = c.req.query("sameDayAcrossYears") || "";
+  const sameDayEachMonth = c.req.query("sameDayEachMonth") || "";
+  const sameWeekdayInMonth = c.req.query("sameWeekdayInMonth") || "";
 
   let offset = 0;
   if (pageToken) {
@@ -624,6 +627,10 @@ memoRoutes.get("/", authOptional, async (c) => {
       );
     }
   }
+
+  if (sameDayAcrossYears) opts.sameDayAcrossYears = sameDayAcrossYears;
+  if (sameDayEachMonth) opts.sameDayEachMonth = sameDayEachMonth;
+  if (sameWeekdayInMonth) opts.sameWeekdayInMonth = sameWeekdayInMonth;
 
   if (!user) {
     opts.visibility = "PUBLIC";

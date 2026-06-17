@@ -28,6 +28,9 @@ export const memoServiceClient = {
     if (req.orderBy) params.orderBy = req.orderBy;
     if (req.state !== undefined) params.state = stateToString(req.state);
     if (req.showDeleted) params.showDeleted = "true";
+    if (req.extraParams) {
+      Object.assign(params, req.extraParams);
+    }
     const data = await apiRequest<any>("GET", `/api/v1/memos${buildQueryString(params)}`);
     return {
       memos: (data.memos || []).map(normalizeMemo),

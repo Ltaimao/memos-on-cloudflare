@@ -4,6 +4,32 @@ import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { AttachmentSchema, MotionMediaSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import type { LocalFile } from "../types/attachment";
 
+const COMPRESSIBLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
+const WEBP_QUALITY = 0.8;
+const SKIP_COMPRESS_MIN_SIZE = 50 * 1024; // 小于 50KB 的图不压缩
+
+async function compressImage(file: File): Promise<File> {
+  const img = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  img.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),
+  );
+  if (!blob || blob.size >= file.size) {
+    // 压缩后反而更大（常见于小图/已压缩图片），退回原文件
+    return file;
+  }
+
+  const webpName = file.name.replace(/\.(jpe?g|png)$/i, ".webp");
+  return new File([blob], webpName, { type: "image/webp" });
+}
+
 export const uploadService = {
   async uploadFiles(localFiles: LocalFile[]): Promise<Attachment[]> {
     if (localFiles.length === 0) return [];
@@ -12,12 +38,20 @@ export const uploadService = {
 
     for (const localFile of localFiles) {
       const { file, motionMedia } = localFile;
-      const buffer = new Uint8Array(await file.arrayBuffer());
+
+      // Skip Apple Live Photo still — the video component is the primary asset
+      const shouldCompress =
+        COMPRESSIBLE_IMAGE_TYPES.has(file.type) &&
+        file.size > SKIP_COMPRESS_MIN_SIZE &&
+        !file.name.endsWith(".gif");
+
+      const uploadFile = shouldCompress ? await compressImage(file) : file;
+      const buffer = new Uint8Array(await uploadFile.arrayBuffer());
       const attachment = await attachmentServiceClient.createAttachment({
         attachment: create(AttachmentSchema, {
-          filename: file.name,
-          size: BigInt(file.size),
-          type: file.type,
+          filename: uploadFile.name,
+          size: BigInt(uploadFile.size),
+          type: uploadFile.type,
           content: buffer,
           motionMedia: motionMedia ? create(MotionMediaSchema, motionMedia) : undefined,
         }),

@@ -3,6 +3,7 @@ import {
   BookmarkIcon,
   CalendarIcon,
   CheckCircleIcon,
+  ClockIcon,
   CodeIcon,
   EyeIcon,
   HashIcon,
@@ -51,6 +52,17 @@ const FILTER_CONFIGS: Record<FilterFactor, FilterConfig> = {
   "property.hasCode": {
     icon: CodeIcon,
     getLabel: (_, t) => t("memo.filters.has-code"),
+  },
+  timeTravel: {
+    icon: ClockIcon,
+    getLabel: (value) => {
+      const labels: Record<string, string> = {
+        sameDayAcrossYears: "当年今日",
+        sameDayEachMonth: "每月今日",
+        sameWeekdayInMonth: "每周同期",
+      };
+      return labels[value] || value;
+    },
   },
 };
 

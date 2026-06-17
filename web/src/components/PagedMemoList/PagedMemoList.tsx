@@ -29,6 +29,8 @@ interface Props {
   enabled?: boolean;
   /** When true, render the inline MemoEditor above the list (e.g. on the Home page). */
   showMemoEditor?: boolean;
+  /** Extra query params appended to the API request (e.g. time travel filters). */
+  extraQueryParams?: Record<string, string>;
 }
 
 function useAutoFetchWhenNotScrollable({
@@ -96,6 +98,7 @@ const PagedMemoList = (props: Props) => {
       orderBy: props.orderBy || "create_time desc",
       filter: props.filter,
       pageSize: props.pageSize || DEFAULT_LIST_MEMOS_PAGE_SIZE,
+      extraQueryParams: props.extraQueryParams,
     },
     { enabled: props.enabled ?? true },
   );

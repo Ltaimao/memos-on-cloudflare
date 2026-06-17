@@ -28,6 +28,12 @@ export interface ListMemosOpts {
   offset?: number;
   orderBy?: string;
   readableByUserId?: number;
+  /** "MM-DD" format, e.g. "06-17" — match past years same month+day */
+  sameDayAcrossYears?: string;
+  /** "YYYY-DD" format, e.g. "2026-17" — match each month of the current year on the same day */
+  sameDayEachMonth?: string;
+  /** "YYYY-MM-W" format, e.g. "2026-06-3" — match each same weekday in the month */
+  sameWeekdayInMonth?: string;
 }
 
 export async function createMemo(
@@ -127,6 +133,21 @@ export async function listMemos(
     conditions.push(`(${opts.filterWhere})`);
     params.push(...(opts.filterParams || []));
   }
+  if (opts.sameDayAcrossYears) {
+    conditions.push("strftime('%m-%d', memo.created_ts, 'unixepoch') = ?");
+    // Exclude current year (today's "same day" isn't "past years same day")
+    conditions.push("strftime('%Y', memo.created_ts, 'unixepoch') != ?");
+    params.push(opts.sameDayAcrossYears, String(new Date().getFullYear()));
+  }
+  if (opts.sameDayEachMonth) {
+    conditions.push("strftime('%Y-%d', memo.created_ts, 'unixepoch') = ?");
+    params.push(opts.sameDayEachMonth);
+  }
+  if (opts.sameWeekdayInMonth) {
+    conditions.push("strftime('%Y-%m-%w', memo.created_ts, 'unixepoch') = ?");
+    params.push(opts.sameWeekdayInMonth);
+  }
+
   if (opts.readableByUserId !== undefined) {
     conditions.push("(visibility IN ('PUBLIC', 'PROTECTED') OR creator_id = ?)");
     params.push(opts.readableByUserId);
