@@ -27,7 +27,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact }) => {
 
   const { handleMemoContentClick, handleMemoContentDoubleClick } = useMemoHandlers({ readonly, openEditor, openPreview });
 
-  const referencedMemos = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
+  const referencedMemos = (memo.relations || []).filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
 
   return (
     <>
