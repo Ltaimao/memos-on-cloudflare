@@ -27,7 +27,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/jkjoy/memos-on-cloudflare.git
+git clone https://github.com/Ltaimao/memos-on-cloudflare.git
 cd memos-on-cloudflare
 ```
 
