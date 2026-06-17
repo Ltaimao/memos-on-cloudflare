@@ -104,7 +104,7 @@ function emptyLinkMetadata(url?: string): LinkMetadata {
 
 function parseMemoPayload(content: string) {
   const tags: string[] = [];
-  const tagRegex = /#([a-zA-Z0-9_一-鿿぀-ゟ゠-ヿ/\-]+)/g;
+  const tagRegex = /#([a-zA-Z0-9_一-鿿぀-ゟ゠-ヿ/\-·．.]+)/g;
   let match;
   while ((match = tagRegex.exec(content)) !== null) {
     tags.push(match[1]);

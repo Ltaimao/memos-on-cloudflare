@@ -9,8 +9,8 @@ const GEOCODING = {
 /** Address hierarchy keys in priority order per level: 省/市/区/街道/具体地点 */
 const ADDRESS_KEYS: string[][] = [
   ["state"],
-  ["city", "town", "village", "municipality"],
-  ["district", "county", "city_district"],
+  ["city", "county", "town", "village", "municipality"],
+  ["district", "city_district"],
   ["suburb", "neighbourhood"],
   ["residential", "hamlet", "quarter"],
 ];
