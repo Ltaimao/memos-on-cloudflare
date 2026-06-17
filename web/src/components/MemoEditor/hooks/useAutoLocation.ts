@@ -10,10 +10,9 @@ interface UseAutoLocationOptions {
   isCreating: boolean;
   isInitialized: boolean;
   onLocationChange: (loc: unknown) => void;
-  appendContent: (text: string) => void;
 }
 
-export const useAutoLocation = ({ enabled, isCreating, isInitialized, onLocationChange, appendContent }: UseAutoLocationOptions) => {
+export const useAutoLocation = ({ enabled, isCreating, isInitialized, onLocationChange }: UseAutoLocationOptions) => {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const triggeredRef = useRef(false);
   const appliedRef = useRef(false);
@@ -39,7 +38,7 @@ export const useAutoLocation = ({ enabled, isCreating, isInitialized, onLocation
   // Step 2: reverse geocode when coordinates are available
   const { data: geoResult } = useReverseGeocoding(coords?.lat, coords?.lng);
 
-  // Step 3: when geo result arrives, dispatch location + append tag
+  // Step 3: when geo result arrives, dispatch location
   useEffect(() => {
     if (!geoResult || !coords) return;
     if (appliedRef.current) return;
@@ -52,11 +51,7 @@ export const useAutoLocation = ({ enabled, isCreating, isInitialized, onLocation
         placeholder: geoResult.displayName,
       }),
     );
-
-    if (geoResult.addressTag) {
-      appendContent(`\n\n${geoResult.addressTag}`);
-    }
-  }, [geoResult, coords, onLocationChange, appendContent]);
+  }, [geoResult, coords, onLocationChange]);
 
   // Reset refs when creating a new memo (isCreating transitions false -> true)
   const prevIsCreatingRef = useRef(isCreating);

@@ -11,6 +11,7 @@ import {
   MicIcon,
   MoreHorizontalIcon,
   PlusIcon,
+  Tag,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -155,6 +156,10 @@ const InsertMenu = (props: InsertMenuProps) => {
     handleUploadClick();
   }, [handleUploadClick]);
 
+  const handleInsertAddressTagClick = useCallback(() => {
+    props.onInsertAddressTag?.();
+  }, [props]);
+
   const menuItems = useMemo(
     () =>
       [
@@ -183,13 +188,19 @@ const InsertMenu = (props: InsertMenuProps) => {
           onClick: handleOpenLinkDialog,
         },
         {
+          key: "insert-address-tag",
+          label: t("editor.insert-menu.insert-address-tag"),
+          icon: Tag,
+          onClick: handleInsertAddressTagClick,
+        },
+        {
           key: "location",
           label: t("editor.insert-menu.add-location"),
           icon: MapPinIcon,
           onClick: handleLocationClick,
         },
       ] satisfies Array<{ key: string; label: string; icon: LucideIcon; onClick: () => void }>,
-    [handleFileUploadClick, handleLocationClick, handleMediaUploadClick, handleOpenLinkDialog, props, t],
+    [handleFileUploadClick, handleInsertAddressTagClick, handleLocationClick, handleMediaUploadClick, handleOpenLinkDialog, props, t],
   );
 
   return (

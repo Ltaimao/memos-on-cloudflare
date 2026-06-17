@@ -10,6 +10,7 @@ import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { buildAddressTag } from "@/components/map/useReverseGeocoding";
 import { convertVisibilityFromString } from "@/utils/memo";
 import {
   AudioRecorderPanel,
@@ -126,12 +127,47 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     editor.scrollToCursor();
   }, []);
 
+  const handleInsertAddressTag = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast.error(t("editor.audio-recorder.error"));
+      return;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: false });
+      });
+
+      const { latitude: lat, longitude: lng } = position.coords;
+      const coordString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+      let addressTag = "";
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1`;
+        const response = await fetch(url, {
+          headers: { "User-Agent": "Memos/1.0 (https://github.com/usememos/memos)", Accept: "application/json" },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const address: Record<string, string> = data?.address || {};
+          addressTag = buildAddressTag(address);
+        }
+      } catch {
+        // fall through to coordinate fallback
+      }
+
+      const tag = addressTag || `#${coordString.replace(", ", "/")}`;
+      appendContent(tag);
+    } catch {
+      toast.error(t("editor.audio-recorder.error-description"));
+    }
+  }, [appendContent, t]);
+
   useAutoLocation({
     enabled: autoLocationEnabled,
     isCreating: !memo,
     isInitialized,
     onLocationChange: handleLocationChange,
-    appendContent,
   });
 
   const insertTranscribedText = useCallback((text: string) => {
@@ -374,7 +410,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
         {/* Metadata and toolbar grouped together at bottom */}
         <div className="w-full flex flex-col gap-2">
           <EditorMetadata memoName={memoName} />
-          <EditorToolbar onSave={handleSave} onCancel={onCancel} memoName={memoName} onAudioRecorderClick={handleAudioRecorderClick} />
+          <EditorToolbar onSave={handleSave} onCancel={onCancel} memoName={memoName} onAudioRecorderClick={handleAudioRecorderClick} onInsertAddressTag={handleInsertAddressTag} />
         </div>
       </div>
     </>

@@ -165,6 +165,7 @@
     "slash-commands": "按下 `/` 输入命令",
     "insert-menu": {
       "add-location": "添加位置",
+      "insert-address-tag": "插入地址标签",
       "link-memo": "链接备忘录",
       "upload-file": "上传文件"
     },

@@ -20,7 +20,7 @@ export interface ReverseGeoResult {
   addressTag: string;
 }
 
-function buildAddressTag(address: Record<string, string>): string {
+export function buildAddressTag(address: Record<string, string>): string {
   const parts: string[] = [];
   for (const keys of ADDRESS_KEYS) {
     const value = keys.reduce((acc, k) => acc || address[k] || "", "");

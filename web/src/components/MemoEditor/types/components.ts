@@ -32,6 +32,7 @@ export interface EditorToolbarProps {
   onCancel?: () => void;
   memoName?: string;
   onAudioRecorderClick: () => void;
+  onInsertAddressTag?: () => void;
 }
 
 export interface EditorMetadataProps {
@@ -67,6 +68,7 @@ export interface InsertMenuProps {
   onToggleFocusMode?: () => void;
   memoName?: string;
   onAudioRecorderClick?: () => void;
+  onInsertAddressTag?: () => void;
 }
 
 export interface TagSuggestionsProps {

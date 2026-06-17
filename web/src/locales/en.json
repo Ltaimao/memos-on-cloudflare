@@ -163,6 +163,7 @@
     "focus-mode": "Focus Mode",
     "insert-menu": {
       "add-location": "Add location",
+      "insert-address-tag": "Insert address tag",
       "link-memo": "Link memo",
       "upload-file": "Upload file"
     },
