@@ -118,17 +118,17 @@ export function useMemos(request: Partial<ListMemosRequest> = {}) {
   });
 }
 
-export function useInfiniteMemos(request: Partial<ListMemosRequest> & { extraParams?: Record<string, string> } = {}, options?: { enabled?: boolean }) {
+export function useInfiniteMemos(request: Partial<ListMemosRequest> & { extraQueryParams?: Record<string, string> } = {}, options?: { enabled?: boolean }) {
   return useInfiniteQuery({
     queryKey: memoKeys.list(request),
     queryFn: async ({ pageParam }) => {
-      const { extraParams, ...protoRequest } = request;
+      const { extraQueryParams, ...protoRequest } = request;
       const response = await memoServiceClient.listMemos({
         ...create(ListMemosRequestSchema, {
           ...protoRequest,
           pageToken: pageParam || "",
         } as Record<string, unknown>),
-        extraParams,
+        extraParams: extraQueryParams,
       });
       return response;
     },

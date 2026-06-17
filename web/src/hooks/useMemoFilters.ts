@@ -83,6 +83,9 @@ export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | un
         const endOfDay = startOfDay + 60 * 60 * 24;
 
         conditions.push(`created_ts >= ${startOfDay} && created_ts < ${endOfDay}`);
+      } else if (filter.factor === "timeTravel") {
+        // timeTravel is handled via extraQueryParams, skip CEL filter
+        continue;
       }
     }
 
