@@ -21,6 +21,8 @@ function buildBookmarkletCode(instanceUrl: string, token: string, visibility: st
   return `javascript:void(function(){var s=document.createElement('script');s.src='${clipperUrl}';document.body.appendChild(s)}())`;
 }
 
+const VisApiString: Record<number, string> = { 1: "PRIVATE", 2: "PROTECTED", 3: "PUBLIC" };
+
 const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
   { value: Visibility.PRIVATE, label: "Private" },
   { value: Visibility.PROTECTED, label: "Protected" },
@@ -38,7 +40,7 @@ const WebClipperSection = () => {
   const instanceUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const bookmarkletCode = useMemo(
-    () => (tokenInput.trim() ? buildBookmarkletCode(instanceUrl, tokenInput.trim(), visibility.toString()) : ""),
+    () => (tokenInput.trim() ? buildBookmarkletCode(instanceUrl, tokenInput.trim(), VisApiString[visibility] ?? "PRIVATE") : ""),
     [instanceUrl, tokenInput, visibility],
   );
 
