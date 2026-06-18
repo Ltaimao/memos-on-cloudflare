@@ -7,15 +7,26 @@ import type { LocalFile } from "../types/attachment";
 const COMPRESSIBLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 const WEBP_QUALITY = 0.8;
 const SKIP_COMPRESS_MIN_SIZE = 50 * 1024; // 小于 50KB 的图不压缩
+const MAX_DIMENSION = 2048; // 最长边不超过 2048px
 
 async function compressImage(file: File): Promise<File> {
   const img = await createImageBitmap(file);
+
+  // 等比缩放：超过 MAX_DIMENSION 的图片缩到该尺寸以内
+  let targetW = img.width;
+  let targetH = img.height;
+  if (targetW > MAX_DIMENSION || targetH > MAX_DIMENSION) {
+    const ratio = Math.min(MAX_DIMENSION / targetW, MAX_DIMENSION / targetH);
+    targetW = Math.round(targetW * ratio);
+    targetH = Math.round(targetH * ratio);
+  }
+
   const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
+  canvas.width = targetW;
+  canvas.height = targetH;
 
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, targetW, targetH);
   img.close();
 
   const blob = await new Promise<Blob | null>((resolve) =>
