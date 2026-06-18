@@ -5,6 +5,17 @@ import * as settingDB from "../db/setting";
 import { createErrorBody } from "../error";
 import { deleteCachedKeys } from "../cache";
 
+declare function createImageBitmap(blob: Blob): Promise<ImageBitmap>;
+declare class OffscreenCanvas {
+  constructor(width: number, height: number);
+  getContext(type: "2d"): OffscreenCanvasRenderingContext2D | null;
+  convertToBlob(options?: { type?: string; quality?: number }): Promise<Blob>;
+}
+type ImageBitmap = { width: number; height: number; close(): void };
+type OffscreenCanvasRenderingContext2D = {
+  drawImage(bitmap: ImageBitmap, x: number, y: number, w: number, h: number): void;
+};
+
 type AttApp = { Bindings: Env; Variables: { user: UserPayload } };
 
 export const attachmentRoutes = new Hono<AttApp>();
@@ -22,6 +33,38 @@ export interface AttachmentRow {
   storage_type: string;
   reference: string;
   payload: string;
+}
+
+const THUMBNAIL_PREFIX = "thumb__";
+const THUMBNAIL_MAX = 400;
+const SUPPORTED_THUMB_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function thumbnailKey(ref: string): string {
+  const parts = ref.split("/");
+  const file = parts.pop()!;
+  return [...parts, THUMBNAIL_PREFIX + file].join("/");
+}
+
+async function generateThumbnail(data: ArrayBuffer, mimeType: string): Promise<Blob | null> {
+  try {
+    const bitmap = await createImageBitmap(new Blob([data], { type: mimeType }));
+    const { width, height } = bitmap;
+    let tw: number, th: number;
+    if (width > height) {
+      tw = Math.min(width, THUMBNAIL_MAX);
+      th = Math.round((tw / width) * height);
+    } else {
+      th = Math.min(height, THUMBNAIL_MAX);
+      tw = Math.round((th / height) * width);
+    }
+    const canvas = new OffscreenCanvas(tw, th);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bitmap, 0, 0, tw, th);
+    bitmap.close();
+    return canvas.convertToBlob({ type: "image/webp", quality: 0.7 });
+  } catch {
+    return null;
+  }
 }
 
 const nowTs = () => Math.floor(Date.now() / 1000);
@@ -181,6 +224,19 @@ attachmentRoutes.post("/", authRequired, async (c) => {
     httpMetadata: { contentType: fileType },
   });
 
+  // Best-effort thumbnail generation (runs after response is sent)
+  if (SUPPORTED_THUMB_TYPES.has(fileType)) {
+    c.executionCtx.waitUntil(
+      generateThumbnail(fileData, fileType).then(async (blob) => {
+        if (blob) {
+          await c.env.BUCKET.put(thumbnailKey(r2Key), blob, {
+            httpMetadata: { contentType: "image/webp" },
+          });
+        }
+      }),
+    );
+  }
+
   // Store metadata in D1
   const createdTs = nowTs();
   const att = await c.env.DB.prepare(
@@ -290,6 +346,7 @@ attachmentRoutes.delete("/:id", authRequired, async (c) => {
   // Delete from R2
   if (att.reference) {
     await c.env.BUCKET.delete(att.reference);
+    await c.env.BUCKET.delete(thumbnailKey(att.reference));
   }
 
   await c.env.DB.prepare("DELETE FROM attachment WHERE id = ?").bind(att.id).run();
@@ -308,7 +365,10 @@ attachmentRoutes.post("/:action", authRequired, async (c) => {
   for (const reference of body.names || body.ids || []) {
     const att = await findAttachmentByToken(c.env.DB, String(reference));
     if (att && (att.creator_id === user.id || user.role === "ADMIN")) {
-      if (att.reference) await c.env.BUCKET.delete(att.reference);
+      if (att.reference) {
+        await c.env.BUCKET.delete(att.reference);
+        await c.env.BUCKET.delete(thumbnailKey(att.reference));
+      }
       await c.env.DB.prepare("DELETE FROM attachment WHERE id = ?").bind(att.id).run();
     }
   }

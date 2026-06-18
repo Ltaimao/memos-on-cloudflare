@@ -16,6 +16,14 @@ const UNSAFE_MIME_TYPES = new Set([
   "application/xhtml+xml",
 ]);
 
+const THUMBNAIL_PREFIX = "thumb__";
+
+function thumbnailKey(ref: string): string {
+  const parts = ref.split("/");
+  const file = parts.pop()!;
+  return [...parts, THUMBNAIL_PREFIX + file].join("/");
+}
+
 function parseRangeHeader(rangeHeader: string | undefined, totalSize: number) {
   if (!rangeHeader || totalSize <= 0) {
     return undefined;
@@ -139,24 +147,42 @@ fileRoutes.get("/attachments/:uid/:filename", authOptional, async (c) => {
     }
   }
 
+  // Serve thumbnail if requested
+  const isThumbnailRequest = c.req.query("thumbnail") === "true";
+  let r2Key = att.reference;
+  let responseContentType = att.type || "application/octet-stream";
+
+  if (isThumbnailRequest && responseContentType.startsWith("image/") && !UNSAFE_MIME_TYPES.has(responseContentType)) {
+    const thumbRef = thumbnailKey(att.reference);
+    const thumbObject = await c.env.BUCKET.get(thumbRef);
+    if (thumbObject) {
+      r2Key = thumbRef;
+      responseContentType = "image/webp";
+      cacheControl = "public, max-age=31536000, immutable";
+    }
+  }
+
   const range = parseRangeHeader(c.req.header("Range"), att.size);
   const r2Object = range
-    ? await c.env.BUCKET.get(att.reference, { range: { offset: range.start, length: range.length } })
-    : await c.env.BUCKET.get(att.reference);
+    ? await c.env.BUCKET.get(r2Key, { range: { offset: range.start, length: range.length } })
+    : await c.env.BUCKET.get(r2Key);
   if (!r2Object) {
     return c.notFound();
   }
 
-  let contentType = att.type || "application/octet-stream";
-  if (UNSAFE_MIME_TYPES.has(contentType)) {
-    contentType = "application/octet-stream";
+  if (UNSAFE_MIME_TYPES.has(responseContentType)) {
+    responseContentType = "application/octet-stream";
   }
 
   const headers: Record<string, string> = {
-    "Content-Type": contentType,
+    "Content-Type": responseContentType,
     "Cache-Control": cacheControl,
     "Accept-Ranges": "bytes",
   };
+
+  if (r2Object.httpEtag) {
+    headers["ETag"] = r2Object.httpEtag;
+  }
 
   if (range) {
     headers["Content-Range"] = `bytes ${range.start}-${range.end}/${att.size}`;

@@ -12,6 +12,8 @@ export const Image = ({ className, alt, node: _node, height, width, style, ...pr
     <img
       className={cn("max-w-full my-2", !height && "h-auto", className)}
       alt={alt}
+      loading="lazy"
+      decoding="async"
       style={{ height: height ? `${height}px` : undefined, width: width ? `${width}px` : undefined, ...style }}
       {...props}
     />
