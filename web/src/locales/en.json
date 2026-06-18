@@ -748,6 +748,15 @@
       "url": "URL",
       "label": "Webhooks"
     },
+    "clipper": {
+      "label": "Web Clipper",
+      "title": "Web Clipper",
+      "description": "Save any web page to your memos with one click.",
+      "bookmarklet": "Quick setup",
+      "manual": "Manual setup",
+      "copy-code": "Copy code",
+      "security-notice": "Your access token is embedded in the bookmarklet. Anyone with access to your bookmarks can use it. Use a short-lived token (30 days recommended)."
+    },
     "tags": {
       "label": "Tags",
       "title": "Tag metadata",

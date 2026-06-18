@@ -1,5 +1,6 @@
 import {
   BarChart3Icon,
+  BookmarkIcon,
   CogIcon,
   HeartHandshakeIcon,
   KeyIcon,
@@ -24,6 +25,7 @@ import ResourceStatsSection from "@/components/Settings/ResourceStatsSection";
 import SSOSection from "@/components/Settings/SSOSection";
 import StorageSection from "@/components/Settings/StorageSection";
 import TagsSection from "@/components/Settings/TagsSection";
+import WebClipperSection from "@/components/Settings/WebClipperSection";
 import WebhookSection from "@/components/Settings/WebhookSection";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 
@@ -39,7 +41,8 @@ export type SettingSectionKey =
   | "storage"
   | "tags"
   | "ai"
-  | "resource-stats";
+  | "resource-stats"
+  | "clipper";
 
 type SettingSectionScope = "basic" | "admin";
 
@@ -73,6 +76,13 @@ export const SETTINGS_SECTIONS: SettingSectionDefinition[] = [
     labelKey: "setting.webhook.label",
     icon: WebhookIcon,
     component: WebhookSection,
+  },
+  {
+    key: "clipper",
+    scope: "basic",
+    labelKey: "setting.clipper.label",
+    icon: BookmarkIcon,
+    component: WebClipperSection,
   },
   {
     key: "member",

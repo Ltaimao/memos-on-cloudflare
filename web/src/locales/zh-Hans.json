@@ -729,6 +729,15 @@
       "url": "链接",
       "label": "Webhook"
     },
+    "clipper": {
+      "label": "网页剪藏",
+      "title": "网页剪藏",
+      "description": "一键保存任意网页到备忘录。",
+      "bookmarklet": "快速设置",
+      "manual": "手动设置",
+      "copy-code": "复制代码",
+      "security-notice": "你的访问令牌已嵌入书签中。任何能访问你书签的人都可以使用它，建议使用短期令牌（推荐30天）。"
+    },
     "tags": {
       "label": "标签",
       "title": "标签元数据",
