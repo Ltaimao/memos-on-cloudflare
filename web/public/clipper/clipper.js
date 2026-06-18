@@ -37,7 +37,10 @@
 
   // ── Utility: build memo content ─────────────────────────────────
   function buildMemoContent(title, url, bodyHtml, selection) {
-    var lines = ["[" + title + "](" + url + ")"];
+    // Add #网页剪藏/domain tag
+    var domain = url.replace(/^https?:\/\//, "").split("/")[0];
+    var tag = "#网页剪藏/" + domain;
+    var lines = ["[" + title + "](" + url + ")", "", tag];
     if (selection) {
       lines.push("");
       lines.push("> " + selection.replace(/\n/g, "\n> "));
