@@ -145,12 +145,22 @@ export async function listMemos(
   if (opts.sameDayEachMonth) {
     // 使用虚拟列，可以使用索引
     conditions.push("memo.year_day = ?");
-    params.push(opts.sameDayEachMonth);
+    // 排除今天的数据
+    const now = new Date();
+    const startOfToday = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000);
+    const startOfTomorrow = startOfToday + 86400;
+    conditions.push("(memo.created_ts < ? OR memo.created_ts >= ?)");
+    params.push(opts.sameDayEachMonth, startOfToday, startOfTomorrow);
   }
   if (opts.sameWeekdayInMonth) {
     // 使用虚拟列，可以使用索引
     conditions.push("memo.year_month_weekday = ?");
-    params.push(opts.sameWeekdayInMonth);
+    // 排除今天的数据
+    const now = new Date();
+    const startOfToday = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000);
+    const startOfTomorrow = startOfToday + 86400;
+    conditions.push("(memo.created_ts < ? OR memo.created_ts >= ?)");
+    params.push(opts.sameWeekdayInMonth, startOfToday, startOfTomorrow);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
