@@ -1,17 +1,17 @@
 -- 为时间旅行查询添加虚拟列和索引
 
--- 1. 添加虚拟列（预计算日期部分）
+-- 1. 添加虚拟列（VIRTUAL 类型，不存储数据，每次查询时计算）
 ALTER TABLE memo ADD COLUMN month_day TEXT
-  GENERATED ALWAYS AS (strftime('%m-%d', created_ts, 'unixepoch')) STORED;
+  GENERATED ALWAYS AS (strftime('%m-%d', created_ts, 'unixepoch')) VIRTUAL;
 
 ALTER TABLE memo ADD COLUMN year TEXT
-  GENERATED ALWAYS AS (strftime('%Y', created_ts, 'unixepoch')) STORED;
+  GENERATED ALWAYS AS (strftime('%Y', created_ts, 'unixepoch')) VIRTUAL;
 
 ALTER TABLE memo ADD COLUMN year_day TEXT
-  GENERATED ALWAYS AS (strftime('%Y-%d', created_ts, 'unixepoch')) STORED;
+  GENERATED ALWAYS AS (strftime('%Y-%d', created_ts, 'unixepoch')) VIRTUAL;
 
 ALTER TABLE memo ADD COLUMN year_month_weekday TEXT
-  GENERATED ALWAYS AS (strftime('%Y-%m-%w', created_ts, 'unixepoch')) STORED;
+  GENERATED ALWAYS AS (strftime('%Y-%m-%w', created_ts, 'unixepoch')) VIRTUAL;
 
 -- 2. 为虚拟列创建索引
 CREATE INDEX idx_memo_month_day ON memo(month_day);
