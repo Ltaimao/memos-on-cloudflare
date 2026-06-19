@@ -7,6 +7,8 @@ export interface Env {
   JWT_SECRET: string;
   INSTANCE_NAME: string;
   APP_VERSION: string;
+  AMAP_WEB_SERVICE_KEY: string;  // 高德 Web 服务 API Key
+  AMAP_JS_API_KEY: string;       // 高德 Web 端 API Key（可选）
 }
 
 export interface UserPayload {
