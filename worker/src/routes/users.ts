@@ -126,21 +126,37 @@ userRoutes.get("/:username/stats", authOptional, async (c) => {
     return c.json(cached);
   }
 
+  // 标签统计：直接从 memo_tag 聚合，无需解析 payload
+  const tagConditions = ["mt.creator_id = ?"];
+  const tagParams: (string | number)[] = [user.id];
+  if (scope === "public") {
+    tagConditions.push("m.visibility = 'PUBLIC'");
+  } else if (scope === "authenticated") {
+    tagConditions.push("m.visibility IN ('PUBLIC', 'PROTECTED')");
+  }
+
+  const { results: tagRows } = await c.env.DB.prepare(
+    `SELECT mt.tag, COUNT(*) as cnt FROM memo_tag mt
+     JOIN memo m ON m.id = mt.memo_id AND m.row_status = 'NORMAL'
+     WHERE ${tagConditions.join(" AND ")}
+     GROUP BY mt.tag`
+  ).bind(...tagParams).all<{ tag: string; cnt: number }>();
+
+  const tagCounts: Record<string, number> = {};
+  for (const row of tagRows) {
+    tagCounts[row.tag] = row.cnt;
+  }
+
+  // 其余统计仍从 memo 表查询
   const { results: memos } = await c.env.DB.prepare(
     `SELECT created_ts, payload, pinned FROM memo WHERE ${conditions.join(" AND ")}`
   ).bind(user.id).all<{ created_ts: number; payload: string; pinned: number }>();
 
-  const tagCounts: Record<string, number> = {};
   let linkCount = 0, codeCount = 0, todoCount = 0, undoCount = 0;
   const pinnedMemos: number[] = [];
 
   for (const m of memos) {
     const payload = JSON.parse(m.payload || "{}");
-    if (payload.tags) {
-      for (const tag of payload.tags) {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
     if (payload.property?.hasLink) linkCount++;
     if (payload.property?.hasCode) codeCount++;
     if (payload.property?.hasTaskList) todoCount++;
@@ -175,24 +191,26 @@ userRoutes.get("/:action", authOptional, async (c) => {
     const users = await userDB.listUsers(c.env.DB, { rowStatus: "NORMAL" });
     const stats = [];
     for (const user of users) {
-      const { results: memos } = await c.env.DB.prepare(
-        "SELECT payload FROM memo WHERE creator_id = ? AND row_status = 'NORMAL' AND visibility = 'PUBLIC'"
-      ).bind(user.id).all<{ payload: string }>();
+      const { count } = await c.env.DB.prepare(
+        "SELECT COUNT(*) as count FROM memo WHERE creator_id = ? AND row_status = 'NORMAL' AND visibility = 'PUBLIC'"
+      ).bind(user.id).first<{ count: number }>() ?? { count: 0 };
+
+      const { results: tagRows } = await c.env.DB.prepare(
+        `SELECT mt.tag, COUNT(*) as cnt FROM memo_tag mt
+         JOIN memo m ON m.id = mt.memo_id AND m.row_status = 'NORMAL' AND m.visibility = 'PUBLIC'
+         WHERE mt.creator_id = ?
+         GROUP BY mt.tag`
+      ).bind(user.id).all<{ tag: string; cnt: number }>();
 
       const tagCount: Record<string, number> = {};
-      for (const m of memos) {
-        const payload = JSON.parse(m.payload || "{}");
-        if (payload.tags) {
-          for (const tag of payload.tags) {
-            tagCount[tag] = (tagCount[tag] || 0) + 1;
-          }
-        }
+      for (const row of tagRows) {
+        tagCount[row.tag] = row.cnt;
       }
 
       stats.push({
         name: `users/${user.username}/stats`,
         username: user.username,
-        memoCount: memos.length,
+        memoCount: count,
         tagCount,
       });
     }

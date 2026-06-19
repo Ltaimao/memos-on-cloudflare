@@ -8,6 +8,7 @@ export interface MemoRow {
   content: string;
   visibility: string;
   pinned: number;
+  is_comment: number;
   payload: string;
 }
 
@@ -27,7 +28,6 @@ export interface ListMemosOpts {
   pageSize?: number;
   offset?: number;
   orderBy?: string;
-  readableByUserId?: number;
   /** "MM-DD" format, e.g. "06-17" — match past years same month+day */
   sameDayAcrossYears?: string;
   /** "YYYY-DD" format, e.g. "2026-17" — match each month of the current year on the same day */
@@ -47,22 +47,24 @@ export async function createMemo(
     createdTs?: number;
     updatedTs?: number;
     pinned?: boolean;
+    isComment?: boolean;
   }
 ): Promise<MemoRow> {
   const payload = data.payload || "{}";
   const pinned = data.pinned ? 1 : 0;
+  const isComment = data.isComment ? 1 : 0;
 
   let query: string;
   let params: (string | number)[];
 
   if (data.createdTs && data.updatedTs) {
-    query = `INSERT INTO memo (uid, creator_id, content, visibility, payload, pinned, created_ts, updated_ts)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`;
-    params = [data.uid, data.creatorId, data.content, data.visibility, payload, pinned, data.createdTs, data.updatedTs];
+    query = `INSERT INTO memo (uid, creator_id, content, visibility, payload, pinned, is_comment, created_ts, updated_ts)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`;
+    params = [data.uid, data.creatorId, data.content, data.visibility, payload, pinned, isComment, data.createdTs, data.updatedTs];
   } else {
-    query = `INSERT INTO memo (uid, creator_id, content, visibility, payload, pinned)
-             VALUES (?, ?, ?, ?, ?, ?) RETURNING *`;
-    params = [data.uid, data.creatorId, data.content, data.visibility, payload, pinned];
+    query = `INSERT INTO memo (uid, creator_id, content, visibility, payload, pinned, is_comment)
+             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`;
+    params = [data.uid, data.creatorId, data.content, data.visibility, payload, pinned, isComment];
   }
 
   return (await db.prepare(query).bind(...params).first<MemoRow>())!;
@@ -111,7 +113,7 @@ export async function listMemos(
     params.push(opts.pinned ? 1 : 0);
   }
   if (opts.excludeComments) {
-    conditions.push("json_extract(payload, '$.parent') IS NULL");
+    conditions.push("is_comment = 0");
   }
   if (opts.contentSearch) {
     conditions.push("content LIKE ?");
@@ -149,11 +151,6 @@ export async function listMemos(
     // 使用虚拟列，可以使用索引
     conditions.push("memo.year_month_weekday = ?");
     params.push(opts.sameWeekdayInMonth);
-  }
-
-  if (opts.readableByUserId !== undefined) {
-    conditions.push("(visibility IN ('PUBLIC', 'PROTECTED') OR creator_id = ?)");
-    params.push(opts.readableByUserId);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -198,6 +195,7 @@ export async function updateMemo(
     pinned: number;
     row_status: string;
     payload: string;
+    is_comment: number;
     created_ts: number;
     updated_ts: number;
   }>

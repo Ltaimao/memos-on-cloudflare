@@ -118,7 +118,12 @@ npm run dev:web
 ├── wrangler.toml          # Cloudflare 配置（D1、R2、AI 绑定）
 ├── package.json           # 根 package，部署脚本
 ├── migrations/
-│   └── 0001_initial.sql   # D1 数据库 schema
+│   ├── 0001_initial.sql   # D1 数据库 schema
+│   ├── 0002_webhooks.sql  # Webhook 表
+│   ├── 0003_performance_indexes.sql  # 性能索引
+│   ├── 0004_time_travel_indexes.sql  # 时间旅行虚拟列 + 索引
+│   ├── 0005_display_time_index.sql   # 时间查询索引
+│   └── 0006_tag_lookup_table.sql     # 标签查找表 + 评论标记列
 ├── worker/
 │   └── src/
 │       ├── index.ts       # Hono 入口，路由挂载
@@ -136,6 +141,7 @@ npm run dev:web
 │       │   └── sse.ts     # 实时更新
 │       ├── auth/          # JWT、密码哈希、PAT
 │       ├── db/            # D1 查询模块
+│       ├── filter/        # CEL 风格过滤器编译器（标签、字段查询）
 │       └── middleware/    # 认证中间件
 └── web/
     └── src/
@@ -157,6 +163,16 @@ npm run dev:web
 生产环境通过 `wrangler secret put` 设置敏感变量，非敏感变量在 `wrangler.toml` 的 `[vars]` 中配置。
 
 ## 更新日志
+
+### 2026-06-19
+
+- **标签查询性能优化**: 新建 `memo_tag` 查找表，标签过滤从 JSON 全表扫描改为索引查询
+- **标签统计 SQL 聚合**: 标签计数从 JS 内存解析改为数据库 `GROUP BY`，大幅降低 stats 接口开销
+- **消除查询 OR 瓶颈**: 移除 `readableByUserId` 的 OR 条件，改为直接 visibility 过滤
+- **评论标记列**: 新增 `is_comment` 列替代 `json_extract` 排除评论，减少 JSON 解析开销
+- **修复地址标签坐标偏移**: 高德逆地理编码前将 WGS-84 转换为 GCJ-02 坐标系
+- **修复 D1 LIKE 模式过长**: 标签层级匹配从 LIKE 改为 INSTR/SUBSTR，绕过 D1 的 50 字节限制
+- **新增组合索引**: `idx_memo_creator_created_ts` 优化用户级时间查询
 
 ### 2026-06-18
 
@@ -213,7 +229,7 @@ npm run dev:web
 - Webhook 通知
 - RSS 订阅（用户级 + 全局探索）
 - **时间旅行浏览**：当年今日 / 每月今日 / 每周同期
-- **手动地址标签**：可在录入框 "+" 菜单中手动插入地址标签（依赖浏览器定位 + Nominatim 逆地理编码）
+- **手动地址标签**：可在录入框 "+" 菜单中手动插入地址标签（依赖浏览器定位 + 高德逆地理编码，自动 WGS-84→GCJ-02 坐标转换）
 - **网页剪藏**：浏览器书签工具，一键保存任意网页到备忘录（Readability 正文提取 + Turndown 转 Markdown）
 - **图片缩略图**：上传时自动生成 400px WebP 缩略图，画廊列表加载缩略图而非原图，节省 90%+ 流量
 

@@ -532,19 +532,19 @@ function compileTagTreeMatch(values: string[]): MemoFilterWhere {
   const params: MemoFilterParam[] = [];
   for (const value of values) {
     const prefix = `${value}/`;
-    parts.push("(tag_item.value = ? OR (INSTR(tag_item.value, ?) = 1 AND SUBSTR(tag_item.value, ?, 1) = '/'))");
+    parts.push("(mt.tag = ? OR (INSTR(mt.tag, ?) = 1 AND SUBSTR(mt.tag, ?, 1) = '/'))");
     params.push(value, prefix, prefix.length + 1);
   }
 
   return {
-    sql: `EXISTS (SELECT 1 FROM json_each(memo.payload, '$.tags') AS tag_item WHERE ${parts.join(" OR ")})`,
+    sql: `EXISTS (SELECT 1 FROM memo_tag mt WHERE mt.memo_id = memo.id AND (${parts.join(" OR ")}))`,
     params,
   };
 }
 
 function compileExactTagMatch(value: string): MemoFilterWhere {
   return {
-    sql: "EXISTS (SELECT 1 FROM json_each(memo.payload, '$.tags') AS tag_item WHERE tag_item.value = ?)",
+    sql: "EXISTS (SELECT 1 FROM memo_tag mt WHERE mt.memo_id = memo.id AND mt.tag = ?)",
     params: [value],
   };
 }
@@ -580,16 +580,16 @@ function compileTagsExists(node: AstNode, ctx: CompileContext): MemoFilterWhere 
   switch (predicate.callee.property) {
     case "startsWith": {
       const childPrefix = `${needle}/`;
-      sql = "tag_item.value = ? OR INSTR(tag_item.value, ?) = 1";
+      sql = "mt.tag = ? OR INSTR(mt.tag, ?) = 1";
       params = [needle, childPrefix];
       break;
     }
     case "endsWith":
-      sql = "tag_item.value LIKE ? OR SUBSTR(tag_item.value, -LENGTH(?)) = ?";
+      sql = "mt.tag LIKE ? OR SUBSTR(mt.tag, -LENGTH(?)) = ?";
       params = [`%${needle}`, needle, needle];
       break;
     case "contains":
-      sql = "INSTR(tag_item.value, ?) > 0";
+      sql = "INSTR(mt.tag, ?) > 0";
       params = [needle];
       break;
     default:
@@ -597,7 +597,7 @@ function compileTagsExists(node: AstNode, ctx: CompileContext): MemoFilterWhere 
   }
 
   return {
-    sql: `EXISTS (SELECT 1 FROM json_each(memo.payload, '$.tags') AS tag_item WHERE ${sql})`,
+    sql: `EXISTS (SELECT 1 FROM memo_tag mt WHERE mt.memo_id = memo.id AND ${sql})`,
     params,
   };
 }

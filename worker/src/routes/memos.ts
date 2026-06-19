@@ -18,6 +18,13 @@ export const memoRoutes = new Hono<MemoApp>();
 
 const getUtf8ByteLength = (value: string) => new TextEncoder().encode(value).length;
 
+async function syncMemoTags(db: D1Database, memoId: number, creatorId: number, tags: string[]) {
+  await db.prepare("DELETE FROM memo_tag WHERE memo_id = ?").bind(memoId).run();
+  if (tags.length === 0) return;
+  const stmt = db.prepare("INSERT INTO memo_tag (memo_id, creator_id, tag) VALUES (?, ?, ?)");
+  await db.batch(tags.map(tag => stmt.bind(memoId, creatorId, tag)));
+}
+
 const getMemoContentLengthLimit = async (db: D1Database) => {
   const setting = await settingDB.getInstanceSetting(db, "MEMO_RELATED");
   if (!setting) {
@@ -574,6 +581,11 @@ memoRoutes.post("/", authRequired, async (c) => {
     updatedTs,
   });
 
+  // 同步标签到查找表
+  if (payload.tags && payload.tags.length > 0) {
+    await syncMemoTags(c.env.DB, memo.id, user.id, payload.tags);
+  }
+
   if (Array.isArray(body.attachments) && body.attachments.length > 0) {
     await setMemoAttachments(c.env.DB, memo.id, user, body.attachments);
   }
@@ -634,8 +646,10 @@ memoRoutes.get("/", authOptional, async (c) => {
 
   if (!user) {
     opts.visibility = "PUBLIC";
+  } else if (opts.creatorId !== undefined && opts.creatorId === user.id) {
+    // 查看自己的内容，不需要 visibility 限制
   } else {
-    opts.readableByUserId = user.id;
+    opts.visibilities = ["PUBLIC", "PROTECTED"];
   }
 
   const { memos, total } = await memoDB.listMemos(c.env.DB, opts);
@@ -713,6 +727,7 @@ memoRoutes.patch("/:id", authRequired, async (c) => {
     const payload = parseMemoPayload(body.content);
     const existingPayload = JSON.parse(memo.payload || "{}");
     updateData.payload = JSON.stringify({ ...existingPayload, ...payload });
+    updateData.is_comment = existingPayload.parent ? 1 : 0;
   }
   if (body.location !== undefined) {
     const existingPayload = JSON.parse((updateData.payload as string) || memo.payload || "{}");
@@ -730,6 +745,12 @@ memoRoutes.patch("/:id", authRequired, async (c) => {
   const updated = await memoDB.updateMemo(c.env.DB, memo.id, updateData);
   if (!updated) {
     return c.json({ error: "Update failed" }, 500);
+  }
+
+  // 同步标签到查找表
+  if (body.content !== undefined) {
+    const finalPayload = JSON.parse(updated.payload || "{}");
+    await syncMemoTags(c.env.DB, updated.id, updated.creator_id, finalPayload.tags || []);
   }
 
   const creatorName = updated.creator_id === user.id ? user.username : (await c.env.DB.prepare("SELECT username FROM user WHERE id = ?").bind(updated.creator_id).first<{ username: string }>())?.username;
@@ -837,7 +858,13 @@ memoRoutes.post("/:id/comments", authRequired, async (c) => {
       ...payload,
       parent: `memos/${parentMemo.uid}`,
     }),
+    isComment: true,
   });
+
+  // 同步标签到查找表
+  if (payload.tags && payload.tags.length > 0) {
+    await syncMemoTags(c.env.DB, comment.id, user.id, payload.tags);
+  }
 
   if (Array.isArray(body.attachments) && body.attachments.length > 0) {
     await setMemoAttachments(c.env.DB, comment.id, user, body.attachments);
