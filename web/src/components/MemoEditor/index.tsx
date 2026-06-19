@@ -143,14 +143,40 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
       let addressTag = "";
       try {
-        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&addressdetails=1`;
-        const response = await fetch(url, {
-          headers: { "User-Agent": "Memos/1.0 (https://github.com/usememos/memos)", Accept: "application/json" },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const address: Record<string, string> = data?.address || {};
-          addressTag = buildAddressTag(address);
+        // 从后端获取高德 Key
+        const keyResponse = await fetch('/api/amap/key');
+        if (keyResponse.ok) {
+          const keyData = await keyResponse.json();
+          const apiKey = keyData.webServiceKey || '';
+
+          if (apiKey) {
+            // 调用高德逆地理编码 API（使用 lng,lat 顺序）
+            const url = `https://restapi.amap.com/v3/geocode/regeo?key=${apiKey}&location=${lng},${lat}&extensions=all`;
+            const response = await fetch(url);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.status === "1" && data.regeocode) {
+                const addressComponent = data.regeocode.addressComponent;
+                const pois = data.regeocode.pois || [];
+
+                // 构建地址标签：省/市/区/地点
+                const parts: string[] = [];
+                if (addressComponent.province) parts.push(addressComponent.province);
+                if (addressComponent.city) parts.push(addressComponent.city);
+                if (addressComponent.district) parts.push(addressComponent.district);
+
+                // 使用第一个 POI 作为地点名（小区名、商场名、公园名等）
+                if (pois.length > 0 && pois[0].name) {
+                  parts.push(pois[0].name);
+                } else if (addressComponent.township) {
+                  // 如果没有 POI，使用 township（街道名）
+                  parts.push(addressComponent.township);
+                }
+
+                addressTag = parts.length > 0 ? `#${parts.join("/")}` : "";
+              }
+            }
+          }
         }
       } catch {
         // fall through to coordinate fallback
