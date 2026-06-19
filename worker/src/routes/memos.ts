@@ -648,6 +648,8 @@ memoRoutes.get("/", authOptional, async (c) => {
     opts.visibility = "PUBLIC";
   } else if (opts.creatorId !== undefined && opts.creatorId === user.id) {
     // 查看自己的内容，不需要 visibility 限制
+  } else if (filter && new RegExp(`creator\\s*==\\s*"users/${user.username}"`).test(filter)) {
+    // filter 表达式指定了当前用户为 creator，不需要 visibility 限制
   } else {
     opts.visibilities = ["PUBLIC", "PROTECTED"];
   }
