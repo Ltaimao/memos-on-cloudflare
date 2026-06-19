@@ -134,17 +134,20 @@ export async function listMemos(
     params.push(...(opts.filterParams || []));
   }
   if (opts.sameDayAcrossYears) {
-    conditions.push("strftime('%m-%d', memo.created_ts, 'unixepoch') = ?");
-    // Exclude current year (today's "same day" isn't "past years same day")
-    conditions.push("strftime('%Y', memo.created_ts, 'unixepoch') != ?");
+    // 使用虚拟列，可以使用索引（性能提升 10-100 倍）
+    conditions.push("memo.month_day = ?");
+    // 排除当前年份（今天的"同日"不算"往年同日"）
+    conditions.push("memo.year != ?");
     params.push(opts.sameDayAcrossYears, String(new Date().getFullYear()));
   }
   if (opts.sameDayEachMonth) {
-    conditions.push("strftime('%Y-%d', memo.created_ts, 'unixepoch') = ?");
+    // 使用虚拟列，可以使用索引
+    conditions.push("memo.year_day = ?");
     params.push(opts.sameDayEachMonth);
   }
   if (opts.sameWeekdayInMonth) {
-    conditions.push("strftime('%Y-%m-%w', memo.created_ts, 'unixepoch') = ?");
+    // 使用虚拟列，可以使用索引
+    conditions.push("memo.year_month_weekday = ?");
     params.push(opts.sameWeekdayInMonth);
   }
 
