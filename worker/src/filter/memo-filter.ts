@@ -532,8 +532,8 @@ function compileTagTreeMatch(values: string[]): MemoFilterWhere {
   const params: MemoFilterParam[] = [];
   for (const value of values) {
     const prefix = `${value}/`;
-    parts.push("(mt.tag = ? OR (INSTR(mt.tag, ?) = 1 AND SUBSTR(mt.tag, ?, 1) = '/'))");
-    params.push(value, prefix, prefix.length + 1);
+    parts.push("(mt.tag = ? OR INSTR(mt.tag, ?) = 1)");
+    params.push(value, prefix);
   }
 
   return {
