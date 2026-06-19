@@ -16,6 +16,7 @@ import { sseRoutes } from "./routes/sse";
 import { exploreRssRoutes, rssRoutes } from "./routes/rss";
 import { findUserById } from "./db/user";
 import { formatUser } from "./routes/users";
+import osmProxy from "./routes/osm-proxy";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -44,6 +45,7 @@ app.route("/api/v1/shortcuts", shortcutRoutes);
 app.route("/api/v1/idps", idpRoutes);
 app.route("/api/v1/ai", aiRoutes);
 app.route("/api/v1/sse", sseRoutes);
+app.route("/api/osm", osmProxy);  // OSM 代理（无需翻墙）
 app.route("/file", fileRoutes);
 app.get("/u/:username", (c) => c.env.ASSETS.fetch(c.req.raw));
 app.get("/u/:username/", (c) => c.env.ASSETS.fetch(c.req.raw));

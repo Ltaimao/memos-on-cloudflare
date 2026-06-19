@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 const GEOCODING = {
-  endpoint: "https://nominatim.openstreetmap.org/reverse",
-  userAgent: "Memos/1.0 (https://github.com/usememos/memos)",
+  endpoint: "/api/osm/reverse",
   format: "jsonv2",
 } as const;
 
@@ -41,7 +40,6 @@ export const useReverseGeocoding = (lat: number | undefined, lng: number | undef
         const url = `${GEOCODING.endpoint}?lat=${lat}&lon=${lng}&format=${GEOCODING.format}&addressdetails=1`;
         const response = await fetch(url, {
           headers: {
-            "User-Agent": GEOCODING.userAgent,
             Accept: "application/json",
           },
         });

@@ -7,8 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { resolveTheme } from "@/utils/theme";
 
 const TILE_URLS = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "/api/osm/tiles/{z}/{x}/{y}.png",
+  dark: "/api/osm/tiles/{z}/{x}/{y}.png",
 } as const;
 
 export const ThemedTileLayer = () => {
