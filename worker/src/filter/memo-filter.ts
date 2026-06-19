@@ -531,8 +531,9 @@ function compileTagTreeMatch(values: string[]): MemoFilterWhere {
   const parts: string[] = [];
   const params: MemoFilterParam[] = [];
   for (const value of values) {
-    parts.push("(tag_item.value = ? OR tag_item.value LIKE ? ESCAPE '\\')");
-    params.push(value, `${escapeLike(value)}/%`);
+    const prefix = `${value}/`;
+    parts.push("(tag_item.value = ? OR (INSTR(tag_item.value, ?) = 1 AND SUBSTR(tag_item.value, ?, 1) = '/'))");
+    params.push(value, prefix, prefix.length + 1);
   }
 
   return {
@@ -574,25 +575,30 @@ function compileTagsExists(node: AstNode, ctx: CompileContext): MemoFilterWhere 
   }
 
   const needle = getStringLiteral(predicate.args[0], ctx);
-  const escaped = escapeLike(needle);
-  let pattern: string;
+  let sql: string;
+  let params: MemoFilterParam[];
   switch (predicate.callee.property) {
-    case "startsWith":
-      pattern = `${escaped}%`;
+    case "startsWith": {
+      const childPrefix = `${needle}/`;
+      sql = "tag_item.value = ? OR INSTR(tag_item.value, ?) = 1";
+      params = [needle, childPrefix];
       break;
+    }
     case "endsWith":
-      pattern = `%${escaped}`;
+      sql = "tag_item.value LIKE ? OR SUBSTR(tag_item.value, -LENGTH(?)) = ?";
+      params = [`%${needle}`, needle, needle];
       break;
     case "contains":
-      pattern = `%${escaped}%`;
+      sql = "INSTR(tag_item.value, ?) > 0";
+      params = [needle];
       break;
     default:
       throw new MemoFilterError(`Unsupported tag predicate '${predicate.callee.property}'`);
   }
 
   return {
-    sql: "EXISTS (SELECT 1 FROM json_each(memo.payload, '$.tags') AS tag_item WHERE tag_item.value LIKE ? ESCAPE '\\')",
-    params: [pattern],
+    sql: `EXISTS (SELECT 1 FROM json_each(memo.payload, '$.tags') AS tag_item WHERE ${sql})`,
+    params,
   };
 }
 

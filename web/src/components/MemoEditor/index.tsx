@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { buildAddressTag } from "@/components/map/useReverseGeocoding";
+import { wgs84ToGcj02 } from "@/utils/coord-transform";
 import { convertVisibilityFromString } from "@/utils/memo";
 import {
   AudioRecorderPanel,
@@ -150,8 +151,10 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
           const apiKey = keyData.webServiceKey || '';
 
           if (apiKey) {
+            // 浏览器 GPS 返回 WGS-84 坐标，高德 API 需要 GCJ-02 坐标
+            const gcj = wgs84ToGcj02(lat, lng);
             // 调用高德逆地理编码 API（使用 lng,lat 顺序）
-            const url = `https://restapi.amap.com/v3/geocode/regeo?key=${apiKey}&location=${lng},${lat}&extensions=all`;
+            const url = `https://restapi.amap.com/v3/geocode/regeo?key=${apiKey}&location=${gcj.lng},${gcj.lat}&extensions=all`;
             const response = await fetch(url);
             if (response.ok) {
               const data = await response.json();
