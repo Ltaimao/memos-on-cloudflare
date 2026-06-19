@@ -5,13 +5,12 @@ const GEOCODING = {
   format: "jsonv2",
 } as const;
 
-/** Address hierarchy keys in priority order per level: 省/市/区/街道/地点 */
+/** Address hierarchy keys in priority order per level: 省/市/区/地点 */
 const ADDRESS_KEYS: string[][] = [
-  ["state"],
-  ["city", "county", "town", "village", "municipality"],
-  ["district", "city_district"],
-  ["suburb", "neighbourhood"],
-  ["residential", "hamlet", "quarter"],
+  ["state", "province"],
+  ["city", "county", "town", "village", "municipality", "state_district", "region"],
+  ["district", "city_district", "suburb"],
+  ["residential", "hamlet", "neighbourhood", "quarter"],
 ];
 
 export interface ReverseGeoResult {
