@@ -17,11 +17,18 @@ const UNSAFE_MIME_TYPES = new Set([
 ]);
 
 const THUMBNAIL_PREFIX = "thumb__";
+const THUMBNAIL_SM_PREFIX = "thumb_sm__";
 
 function thumbnailKey(ref: string): string {
   const parts = ref.split("/");
   const file = parts.pop()!;
   return [...parts, THUMBNAIL_PREFIX + file].join("/");
+}
+
+function thumbnailSmKey(ref: string): string {
+  const parts = ref.split("/");
+  const file = parts.pop()!;
+  return [...parts, THUMBNAIL_SM_PREFIX + file].join("/");
 }
 
 function parseRangeHeader(rangeHeader: string | undefined, totalSize: number) {
@@ -148,17 +155,38 @@ fileRoutes.get("/attachments/:uid/:filename", authOptional, async (c) => {
   }
 
   // Serve thumbnail if requested
-  const isThumbnailRequest = c.req.query("thumbnail") === "true";
+  const isThumbnailRequest = c.req.query("thumbnail") === "true" || c.req.query("thumbnail") === "small";
+  const isSmallThumbnail = c.req.query("thumbnail") === "small";
   let r2Key = att.reference;
   let responseContentType = att.type || "application/octet-stream";
 
   if (isThumbnailRequest && responseContentType.startsWith("image/") && !UNSAFE_MIME_TYPES.has(responseContentType)) {
-    const thumbRef = thumbnailKey(att.reference);
+    const thumbRef = isSmallThumbnail ? thumbnailSmKey(att.reference) : thumbnailKey(att.reference);
     const thumbObject = await c.env.BUCKET.get(thumbRef);
     if (thumbObject) {
       r2Key = thumbRef;
       responseContentType = "image/webp";
       cacheControl = "public, max-age=31536000, immutable";
+    } else if (isSmallThumbnail) {
+      // 小缩略图不存在时 fallback 到大缩略图
+      const fallbackRef = thumbnailKey(att.reference);
+      const fallbackObject = await c.env.BUCKET.get(fallbackRef);
+      if (fallbackObject) {
+        r2Key = fallbackRef;
+        responseContentType = "image/webp";
+        cacheControl = "public, max-age=31536000, immutable";
+      }
+    }
+  }
+
+  // CDN 边缘缓存：公开图片首次请求后，后续请求 CDN 直接返回，跳过 D1 + R2
+  if (cacheControl.startsWith("public")) {
+    const cache = caches.default;
+    const cached = await cache.match(c.req.raw);
+    if (cached) {
+      const resp = new Response(cached.body, cached);
+      resp.headers.set("X-Cache", "HIT");
+      return resp;
     }
   }
 
@@ -182,6 +210,10 @@ fileRoutes.get("/attachments/:uid/:filename", authOptional, async (c) => {
 
   if (r2Object.httpEtag) {
     headers["ETag"] = r2Object.httpEtag;
+    // 304 Not Modified: 浏览器缓存仍有效时跳过传输
+    if (c.req.header("If-None-Match") === r2Object.httpEtag) {
+      return new Response(null, { status: 304, headers: { ETag: r2Object.httpEtag, "Cache-Control": cacheControl } });
+    }
   }
 
   if (range) {
@@ -194,7 +226,14 @@ fileRoutes.get("/attachments/:uid/:filename", authOptional, async (c) => {
     headers["Content-Length"] = String(r2Object.size);
   }
 
-  return new Response(r2Object.body, { status: 200, headers });
+  const response = new Response(r2Object.body, { status: 200, headers });
+
+  // 写入 CDN 边缘缓存（仅公开图片）
+  if (cacheControl.startsWith("public") && !range) {
+    c.executionCtx.waitUntil(caches.default.put(c.req.raw, response.clone()));
+  }
+
+  return response;
 });
 
 // Serve user avatar

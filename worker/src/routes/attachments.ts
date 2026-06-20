@@ -37,6 +37,8 @@ export interface AttachmentRow {
 
 const THUMBNAIL_PREFIX = "thumb__";
 const THUMBNAIL_MAX = 400;
+const THUMBNAIL_SM_PREFIX = "thumb_sm__";
+const THUMBNAIL_SM_MAX = 200;
 const SUPPORTED_THUMB_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function thumbnailKey(ref: string): string {
@@ -45,16 +47,22 @@ function thumbnailKey(ref: string): string {
   return [...parts, THUMBNAIL_PREFIX + file].join("/");
 }
 
-async function generateThumbnail(data: ArrayBuffer, mimeType: string): Promise<Blob | null> {
+function thumbnailSmKey(ref: string): string {
+  const parts = ref.split("/");
+  const file = parts.pop()!;
+  return [...parts, THUMBNAIL_SM_PREFIX + file].join("/");
+}
+
+async function generateThumbnail(data: ArrayBuffer, mimeType: string, maxSize = THUMBNAIL_MAX): Promise<Blob | null> {
   try {
     const bitmap = await createImageBitmap(new Blob([data], { type: mimeType }));
     const { width, height } = bitmap;
     let tw: number, th: number;
     if (width > height) {
-      tw = Math.min(width, THUMBNAIL_MAX);
+      tw = Math.min(width, maxSize);
       th = Math.round((tw / width) * height);
     } else {
-      th = Math.min(height, THUMBNAIL_MAX);
+      th = Math.min(height, maxSize);
       tw = Math.round((th / height) * width);
     }
     const canvas = new OffscreenCanvas(tw, th);
@@ -227,13 +235,22 @@ attachmentRoutes.post("/", authRequired, async (c) => {
   // Best-effort thumbnail generation (runs after response is sent)
   if (SUPPORTED_THUMB_TYPES.has(fileType)) {
     c.executionCtx.waitUntil(
-      generateThumbnail(fileData, fileType).then(async (blob) => {
-        if (blob) {
-          await c.env.BUCKET.put(thumbnailKey(r2Key), blob, {
-            httpMetadata: { contentType: "image/webp" },
-          });
-        }
-      }),
+      Promise.all([
+        generateThumbnail(fileData, fileType).then(async (blob) => {
+          if (blob) {
+            await c.env.BUCKET.put(thumbnailKey(r2Key), blob, {
+              httpMetadata: { contentType: "image/webp" },
+            });
+          }
+        }),
+        generateThumbnail(fileData, fileType, THUMBNAIL_SM_MAX).then(async (blob) => {
+          if (blob) {
+            await c.env.BUCKET.put(thumbnailSmKey(r2Key), blob, {
+              httpMetadata: { contentType: "image/webp" },
+            });
+          }
+        }),
+      ]),
     );
   }
 
@@ -347,6 +364,7 @@ attachmentRoutes.delete("/:id", authRequired, async (c) => {
   if (att.reference) {
     await c.env.BUCKET.delete(att.reference);
     await c.env.BUCKET.delete(thumbnailKey(att.reference));
+    await c.env.BUCKET.delete(thumbnailSmKey(att.reference));
   }
 
   await c.env.DB.prepare("DELETE FROM attachment WHERE id = ?").bind(att.id).run();
@@ -368,6 +386,7 @@ attachmentRoutes.post("/:action", authRequired, async (c) => {
       if (att.reference) {
         await c.env.BUCKET.delete(att.reference);
         await c.env.BUCKET.delete(thumbnailKey(att.reference));
+        await c.env.BUCKET.delete(thumbnailSmKey(att.reference));
       }
       await c.env.DB.prepare("DELETE FROM attachment WHERE id = ?").bind(att.id).run();
     }

@@ -12,7 +12,7 @@ import {
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentThumbnailUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentThumbnailUrl, getAttachmentThumbnailSmUrl, getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
 import SquareDiv from "./kit/SquareDiv";
 import PreviewImageDialog from "./PreviewImageDialog";
 
@@ -49,11 +49,13 @@ const AttachmentIcon = (props: Props) => {
           <img
             className="min-w-full min-h-full object-cover"
             src={getAttachmentThumbnailUrl(attachment)}
+            srcSet={`${getAttachmentThumbnailSmUrl(attachment)} 200w, ${getAttachmentThumbnailUrl(attachment)} 400w`}
+            sizes="(max-width: 640px) 128px, 256px"
             onClick={handleImageClick}
             onError={(e) => {
               // Fallback to original image if thumbnail fails
               const target = e.target as HTMLImageElement;
-              if (target.src.includes("?thumbnail=true")) {
+              if (target.src.includes("?thumbnail")) {
                 console.warn("Thumbnail failed, falling back to original image:", attachmentUrl);
                 target.src = attachmentUrl;
               }

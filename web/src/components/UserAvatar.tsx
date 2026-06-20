@@ -14,6 +14,7 @@ const UserAvatar = (props: Props) => {
         src={avatarUrl || "/full-logo.webp"}
         decoding="async"
         loading="lazy"
+        fetchpriority="high"
         alt=""
       />
     </div>

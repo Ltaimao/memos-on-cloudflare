@@ -28,6 +28,19 @@ export const getAttachmentThumbnailUrl = (attachment: Attachment) => {
   return `${window.location.origin}/file/${attachment.name}/${attachment.filename}?thumbnail=true`;
 };
 
+export const getAttachmentThumbnailSmUrl = (attachment: Attachment) => {
+  if (attachment.externalLink) {
+    return withQueryParam(attachment.externalLink, "thumbnail") + "=small";
+  }
+
+  const uid = (attachment as unknown as { uid?: string }).uid;
+  if (uid) {
+    return `${window.location.origin}/file/attachments/${uid}/${attachment.filename}?thumbnail=small`;
+  }
+
+  return `${window.location.origin}/file/${attachment.name}/${attachment.filename}?thumbnail=small`;
+};
+
 export const getAttachmentMotionClipUrl = (attachment: Attachment) => {
   if (attachment.externalLink) {
     return withQueryParam(attachment.externalLink, "motion");

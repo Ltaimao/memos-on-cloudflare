@@ -141,6 +141,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls = [], items, initialIn
                 className="max-h-[calc(100vh-8rem)] max-w-[calc(100vw-1.5rem)] rounded-md object-contain select-none sm:max-h-[calc(100vh-7rem)] sm:max-w-[calc(100vw-8rem)]"
                 draggable={false}
                 loading="eager"
+                fetchpriority="high"
                 decoding="async"
               />
             )}
