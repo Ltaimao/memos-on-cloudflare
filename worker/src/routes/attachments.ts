@@ -224,8 +224,12 @@ attachmentRoutes.post("/", authRequired, async (c) => {
     }
   }
 
+  // 清洗文件名：去除路径分隔符、控制字符，限制长度
+  filename = filename.replace(/[/\\]/g, "_").replace(/[\x00-\x1f]/g, "").slice(0, 255) || "unnamed";
+
   const uid = crypto.randomUUID().replace(/-/g, "").slice(0, 22);
-  const r2Key = `attachments/${uid}/${filename}`;
+  // R2 路径只用服务端 uid，不拼接用户输入的文件名，防止路径注入
+  const r2Key = `attachments/${uid}/file`;
 
   // Store in R2
   await c.env.BUCKET.put(r2Key, fileData, {
