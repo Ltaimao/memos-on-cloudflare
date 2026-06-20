@@ -11,6 +11,7 @@
 | 运行时 | Cloudflare Workers |
 | 后端框架 | Hono |
 | 数据库 | Cloudflare D1 (SQLite) |
+| 缓存 | Cloudflare Workers KV |
 | 文件存储 | Cloudflare R2 |
 | AI | Cloudflare Workers AI (Whisper) |
 | 前端 | React + Vite + TailwindCSS |
@@ -46,6 +47,9 @@ wrangler d1 create cfmemos-db
 
 # 创建 R2 存储桶
 wrangler r2 bucket create cfmemos
+
+# 创建 KV 缓存命名空间
+wrangler kv namespace create cfmemos-kv
 ```
 
 ### 4. 配置 wrangler.toml
@@ -63,6 +67,10 @@ run_worker_first = ["/api/*", "/file/*", "/u/*"]
 binding = "DB"
 database_name = "cfmemos-db"
 database_id = "你的实际数据库ID"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "你的KV命名空间ID"
 ```
 
 ### 5. 设置生产密钥
@@ -123,11 +131,13 @@ npm run dev:web
 │   ├── 0003_performance_indexes.sql  # 性能索引
 │   ├── 0004_time_travel_indexes.sql  # 时间旅行虚拟列 + 索引
 │   ├── 0005_display_time_index.sql   # 时间查询索引
-│   └── 0006_tag_lookup_table.sql     # 标签查找表 + 评论标记列
+│   ├── 0006_tag_lookup_table.sql     # 标签查找表 + 评论标记列
+│   └── 0007_virtual_column_tz_offset.sql  # 虚拟列加入 UTC+8 时区偏移
 ├── worker/
 │   └── src/
 │       ├── index.ts       # Hono 入口，路由挂载
 │       ├── types.ts       # Env 绑定类型定义
+│       ├── cache.ts       # KV 缓存工具层（getCachedJson/putCachedJson）
 │       ├── routes/        # API 路由
 │       │   ├── auth.ts    # 登录/注册/刷新令牌
 │       │   ├── memos.ts   # 备忘录 CRUD + 评论/反应/分享
@@ -163,6 +173,12 @@ npm run dev:web
 生产环境通过 `wrangler secret put` 设置敏感变量，非敏感变量在 `wrangler.toml` 的 `[vars]` 中配置。
 
 ## 更新日志
+
+### 2026-06-20
+
+- **激活 Workers KV 缓存**: 启用 `cfmemos-kv` 命名空间，实例设置、用户统计、链接预览等高频数据走 KV 缓存，减少 D1 查询
+- **修复时间旅行时区 Bug**: 虚拟列加入 UTC+8 偏移常量（`created_ts + 28800`），修复凌晨创建的 memo 在"当年今日/每月今日/每周同期"中匹配不到的问题
+- **修复排除今天逻辑**: "排除今天"和"排除今年"的计算改用用户本地时区，前端传递 `tzOffset` 参数
 
 ### 2026-06-19
 
@@ -201,6 +217,7 @@ npm run dev:web
 | 绑定名 | 类型 | 用途 |
 |--------|------|------|
 | `DB` | D1 Database | 存储用户、备忘录、设置等所有结构化数据 |
+| `CACHE` | KV Namespace | 缓存用户信息、实例设置、memo 等高频读取数据 |
 | `BUCKET` | R2 Bucket | 存储附件文件（图片、音频、文档） |
 | `AI` | Workers AI | 音频转写（@cf/openai/whisper） |
 | `ASSETS` | Static Assets | 托管前端构建产物 |
