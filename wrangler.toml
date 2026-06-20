@@ -10,7 +10,7 @@ run_worker_first = ["/api/*", "/file/*", "/u/*", "/explore/rss.xml"]
 
 [vars]
 INSTANCE_NAME = "cfmemos"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 [[d1_databases]]
 binding = "DB"
