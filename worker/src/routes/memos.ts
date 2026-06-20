@@ -607,6 +607,7 @@ memoRoutes.get("/", authOptional, async (c) => {
   const sameDayAcrossYears = c.req.query("sameDayAcrossYears") || "";
   const sameDayEachMonth = c.req.query("sameDayEachMonth") || "";
   const sameWeekdayInMonth = c.req.query("sameWeekdayInMonth") || "";
+  const tzOffset = Number(c.req.query("tzOffset")) || 0;
 
   let offset = 0;
   if (pageToken) {
@@ -643,6 +644,7 @@ memoRoutes.get("/", authOptional, async (c) => {
   if (sameDayAcrossYears) opts.sameDayAcrossYears = sameDayAcrossYears;
   if (sameDayEachMonth) opts.sameDayEachMonth = sameDayEachMonth;
   if (sameWeekdayInMonth) opts.sameWeekdayInMonth = sameWeekdayInMonth;
+  if (tzOffset) opts.tzOffsetMinutes = tzOffset;
 
   if (!user) {
     opts.visibility = "PUBLIC";

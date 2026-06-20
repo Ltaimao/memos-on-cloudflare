@@ -34,6 +34,8 @@ export interface ListMemosOpts {
   sameDayEachMonth?: string;
   /** "YYYY-MM-W" format, e.g. "2026-06-3" — match each same weekday in the month */
   sameWeekdayInMonth?: string;
+  /** 用户时区偏移量（分钟，东正西负，如 UTC+8 → 480） */
+  tzOffsetMinutes?: number;
 }
 
 export async function createMemo(
@@ -138,29 +140,33 @@ export async function listMemos(
   if (opts.sameDayAcrossYears) {
     // 使用虚拟列，可以使用索引（性能提升 10-100 倍）
     conditions.push("memo.month_day = ?");
-    // 排除当前年份（今天的"同日"不算"往年同日"）
+    // 排除当前年份（今天的"同日"不算"往年同日"），用本地时区年份
+    const tzMs = (opts.tzOffsetMinutes || 0) * 60000;
+    const localYear = new Date(Date.now() + tzMs).getUTCFullYear();
     conditions.push("memo.year != ?");
-    params.push(opts.sameDayAcrossYears, String(new Date().getFullYear()));
+    params.push(opts.sameDayAcrossYears, String(localYear));
   }
   if (opts.sameDayEachMonth) {
     // 使用虚拟列，可以使用索引
     conditions.push("memo.year_day = ?");
-    // 排除今天的数据
-    const now = new Date();
-    const startOfToday = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000);
-    const startOfTomorrow = startOfToday + 86400;
+    // 排除今天的数据（用用户本地时区计算今天边界）
+    const tzMs = (opts.tzOffsetMinutes || 0) * 60000;
+    const localNow = new Date(Date.now() + tzMs);
+    const startOfLocalToday = Math.floor(new Date(Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate())).getTime() / 1000) - (opts.tzOffsetMinutes || 0) * 60;
+    const startOfLocalTomorrow = startOfLocalToday + 86400;
     conditions.push("(memo.created_ts < ? OR memo.created_ts >= ?)");
-    params.push(opts.sameDayEachMonth, startOfToday, startOfTomorrow);
+    params.push(opts.sameDayEachMonth, startOfLocalToday, startOfLocalTomorrow);
   }
   if (opts.sameWeekdayInMonth) {
     // 使用虚拟列，可以使用索引
     conditions.push("memo.year_month_weekday = ?");
-    // 排除今天的数据
-    const now = new Date();
-    const startOfToday = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000);
-    const startOfTomorrow = startOfToday + 86400;
+    // 排除今天的数据（用用户本地时区计算今天边界）
+    const tzMs = (opts.tzOffsetMinutes || 0) * 60000;
+    const localNow = new Date(Date.now() + tzMs);
+    const startOfLocalToday = Math.floor(new Date(Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate())).getTime() / 1000) - (opts.tzOffsetMinutes || 0) * 60;
+    const startOfLocalTomorrow = startOfLocalToday + 86400;
     conditions.push("(memo.created_ts < ? OR memo.created_ts >= ?)");
-    params.push(opts.sameWeekdayInMonth, startOfToday, startOfTomorrow);
+    params.push(opts.sameWeekdayInMonth, startOfLocalToday, startOfLocalTomorrow);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
