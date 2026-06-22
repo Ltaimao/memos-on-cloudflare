@@ -68,6 +68,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleShowAgeToggle = (checked: boolean) => {
+    updateUserGeneralSetting(
+      { generalSetting: { showAge: checked }, updateMask: ["show_age"] },
+      {
+        onSuccess: () => {
+          refetchSettings();
+        },
+      },
+    );
+  };
+
   // Provide default values if setting is not loaded yet
   const setting: UserSetting_GeneralSetting =
     generalSetting ||
@@ -126,6 +137,14 @@ const PreferencesSection = () => {
         <SettingList>
           <SettingListItem label="自动定位" description="保存 location 字段和 #省/市/区/街道 标签到内容末尾">
             <Switch checked={autoLocationEnabled} onCheckedChange={handleAutoLocationToggle} />
+          </SettingListItem>
+        </SettingList>
+      </SettingGroup>
+
+      <SettingGroup title="年龄显示" description="在每条笔记的创建时间旁显示当时的年龄">
+        <SettingList>
+          <SettingListItem label="笔记展示年龄" description="显示格式：X岁Y个月第Z天">
+            <Switch checked={!!setting.showAge} onCheckedChange={handleShowAgeToggle} />
           </SettingListItem>
         </SettingList>
       </SettingGroup>

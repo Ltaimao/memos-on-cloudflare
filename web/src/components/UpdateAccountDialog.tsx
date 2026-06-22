@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInstance } from "@/contexts/InstanceContext";
 import { convertFileToBase64 } from "@/helpers/utils";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { useUpdateUser } from "@/hooks/useUserQueries";
+import { useUpdateUser, useUpdateUserGeneralSetting } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { useTranslate } from "@/utils/i18n";
 import UserAvatar from "./UserAvatar";
@@ -28,14 +28,16 @@ interface State {
   displayName: string;
   email: string;
   description: string;
+  birthday: string;
 }
 
 function UpdateAccountDialog({ open, onOpenChange, onSuccess }: Props) {
   const t = useTranslate();
   const currentUser = useCurrentUser();
-  const { setCurrentUser } = useAuth();
+  const { setCurrentUser, userGeneralSetting } = useAuth();
   const { generalSetting: instanceGeneralSetting } = useInstance();
   const { mutateAsync: updateUser } = useUpdateUser();
+  const { mutateAsync: updateUserGeneralSetting } = useUpdateUserGeneralSetting(currentUser?.name);
   const canEditUsername = currentUser?.role === 2;
   const [state, setState] = useState<State>({
     avatarUrl: currentUser?.avatarUrl ?? "",
@@ -43,6 +45,7 @@ function UpdateAccountDialog({ open, onOpenChange, onSuccess }: Props) {
     displayName: currentUser?.displayName ?? "",
     email: currentUser?.email ?? "",
     description: currentUser?.description ?? "",
+    birthday: (userGeneralSetting as any)?.birthday ?? "",
   });
 
   const handleCloseBtnClick = () => {
@@ -108,6 +111,10 @@ function UpdateAccountDialog({ open, onOpenChange, onSuccess }: Props) {
     });
   };
 
+  const handleBirthdayChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setState((state) => ({ ...state, birthday: e.target.value }));
+  };
+
   const handleSaveBtnClick = async () => {
     if (state.username === "") {
       toast.error(t("message.fill-all"));
@@ -143,6 +150,16 @@ function UpdateAccountDialog({ open, onOpenChange, onSuccess }: Props) {
         updateMask,
       });
       setCurrentUser(updatedUser);
+
+      // Save birthday to user settings if changed
+      const currentBirthday = (userGeneralSetting as any)?.birthday ?? "";
+      if (state.birthday !== currentBirthday) {
+        await updateUserGeneralSetting({
+          generalSetting: { birthday: state.birthday },
+          updateMask: ["birthday"],
+        });
+      }
+
       toast.success(t("message.update-succeed"));
       onSuccess?.();
       onOpenChange(false);
@@ -211,6 +228,10 @@ function UpdateAccountDialog({ open, onOpenChange, onSuccess }: Props) {
           <div className="grid gap-2">
             <Label htmlFor="description">{t("common.description")}</Label>
             <Textarea id="description" rows={2} value={state.description} onChange={handleDescriptionChanged} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="birthday">生日</Label>
+            <Input id="birthday" type="date" value={state.birthday} onChange={handleBirthdayChanged} />
           </div>
         </div>
         <DialogFooter>

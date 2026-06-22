@@ -610,6 +610,12 @@ export type UserSetting_GeneralSetting = Message<"memos.api.v1.UserSetting.Gener
    * @generated from field: string theme = 4;
    */
   theme: string;
+
+  /** User's birthday in YYYY-MM-DD format. */
+  birthday: string;
+
+  /** Whether to show age next to each memo's creation time. */
+  showAge: boolean;
 };
 
 /**

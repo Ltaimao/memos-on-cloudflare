@@ -3,6 +3,7 @@ import { BookmarkIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
 import useNavigateTo from "@/hooks/useNavigateTo";
 import i18n from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,34 @@ import { useMemoActions } from "../hooks";
 import { useMemoViewContext, useMemoViewDerived } from "../MemoViewContext";
 import type { MemoHeaderProps } from "../types";
 
+function calcAgeAt(birthday: string, atTime: Date): string {
+  const birth = new Date(birthday);
+  const at = new Date(atTime);
+  let years = at.getFullYear() - birth.getFullYear();
+  let months = at.getMonth() - birth.getMonth();
+  let days = at.getDate() - birth.getDate();
+  if (days < 0) {
+    months--;
+    days += new Date(at.getFullYear(), at.getMonth(), 0).getDate();
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  return `${years}岁${months}个月第${days}天`;
+}
+
 const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, showPinned }) => {
   const t = useTranslate();
   const [reactionSelectorOpen, setReactionSelectorOpen] = useState(false);
 
   const { memo, creator, currentUser, parentPage, isArchived, readonly, openEditor } = useMemoViewContext();
   const { createTime, updateTime, displayTime: memoDisplayTime, isDisplayingUpdatedTime, relativeTimeFormat } = useMemoViewDerived();
+  const { userGeneralSetting } = useAuth();
+
+  const birthday = (userGeneralSetting as any)?.birthday as string | undefined;
+  const showAge = (userGeneralSetting as any)?.showAge as boolean | undefined;
+  const ageText = birthday && showAge && createTime ? calcAgeAt(birthday, createTime) : undefined;
 
   const navigateTo = useNavigateTo();
   const handleGotoMemoDetailPage = useCallback(() => {
@@ -49,8 +72,13 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
     updatedAt: updateTime ? `${t("common.last-updated-at")}: ${updateTime.toLocaleString(i18n.language)}` : undefined,
   };
 
+  const ageDisplay = ageText ? (
+    <span className="absolute left-1/2 -translate-x-1/2 text-sm leading-tight text-muted-foreground whitespace-nowrap">{ageText}</span>
+  ) : null;
+
   return (
-    <div className="w-full flex flex-row justify-between items-center gap-2">
+    <div className="relative w-full flex flex-row justify-between items-center gap-2">
+      {ageDisplay}
       <div className="w-auto max-w-[calc(100%-8rem)] grow flex flex-row justify-start items-center">
         {showCreator && creator ? (
           <CreatorDisplay creator={creator} displayTime={displayTime} timeTooltip={timeTooltip} onGotoDetail={handleGotoMemoDetailPage} />
