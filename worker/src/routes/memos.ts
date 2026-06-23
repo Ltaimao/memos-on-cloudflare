@@ -285,59 +285,7 @@ async function enrichMemo(db: D1Database, memo: memoDB.MemoRow, creatorUsername?
   };
 }
 
-async function resolveCreatorUsernames(db: D1Database, memos: memoDB.MemoRow[]): Promise<Map<number, string>> {
-  return resolveUsernamesByIds(db, memos.map((m) => m.creator_id));
-}
-
-async function listAttachmentRowsByMemoIds(db: D1Database, memoIds: number[]) {
-  const rows: any[] = [];
-  for (const chunk of chunkValues(memoIds, 90)) {
-    const { results } = await db.prepare(
-      `SELECT * FROM attachment WHERE memo_id IN (${createPlaceholders(chunk.length)}) ORDER BY memo_id ASC, created_ts ASC`
-    ).bind(...chunk).all<any>();
-    rows.push(...results);
-  }
-  return rows;
-}
-
-async function listRelationRowsByMemoIds(db: D1Database, memoIds: number[]) {
-  const rows: relationDB.RelationRow[] = [];
-  for (const chunk of chunkValues(memoIds, 50)) {
-    const placeholders = createPlaceholders(chunk.length);
-    const { results } = await db.prepare(
-      `SELECT * FROM memo_relation WHERE memo_id IN (${placeholders}) OR related_memo_id IN (${placeholders})`
-    ).bind(...chunk, ...chunk).all<relationDB.RelationRow>();
-    rows.push(...results);
-  }
-  return rows;
-}
-
-async function listReactionRowsByContentIds(db: D1Database, contentIds: string[]) {
-  const rows: reactionDB.ReactionRow[] = [];
-  for (const chunk of chunkValues(contentIds, 90)) {
-    const { results } = await db.prepare(
-      `SELECT * FROM reaction WHERE content_id IN (${createPlaceholders(chunk.length)}) ORDER BY content_id ASC, created_ts ASC`
-    ).bind(...chunk).all<reactionDB.ReactionRow>();
-    rows.push(...results);
-  }
-  return rows;
-}
-
-async function getMemoSnippetMapByIds(db: D1Database, memoIds: number[]) {
-  const memoMap = new Map<number, Pick<memoDB.MemoRow, "uid" | "content" | "visibility" | "creator_id">>();
-  const uniqueIds = [...new Set(memoIds)];
-  for (const chunk of chunkValues(uniqueIds, 90)) {
-    const { results } = await db.prepare(
-      `SELECT id, uid, content, visibility, creator_id FROM memo WHERE id IN (${createPlaceholders(chunk.length)})`
-    ).bind(...chunk).all<memoDB.MemoRow>();
-    for (const memo of results) {
-      memoMap.set(memo.id, memo);
-    }
-  }
-  return memoMap;
-}
-
-async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], creatorUsernameMap?: Map<number, string>, user?: UserPayload) {
+async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], user?: UserPayload) {
   if (memos.length === 0) {
     return [];
   }
@@ -347,16 +295,46 @@ async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], creatorUsern
   const memoUidById = new Map(memos.map((m) => [m.id, m.uid]));
   const memoIdSet = new Set(memoIds);
 
-  const [
-    attachmentRows,
-    relationRows,
-    reactionRows,
-  ] = await Promise.all([
-    listAttachmentRowsByMemoIds(db, memoIds),
-    listRelationRowsByMemoIds(db, memoIds),
-    listReactionRowsByContentIds(db, memoUids),
+  const creatorIds = [...new Set(memos.map((m) => m.creator_id))];
+
+  // Batch 1: attachments + relations + reactions + creator usernames
+  // Chunk by 45 to stay under D1's 100 variable limit (relation query uses 2x IDs)
+  const CHUNK = 45;
+  const attachmentRows: any[] = [];
+  const relationRows: relationDB.RelationRow[] = [];
+  const reactionRows: reactionDB.ReactionRow[] = [];
+
+  for (let i = 0; i < memoIds.length; i += CHUNK) {
+    const idChunk = memoIds.slice(i, i + CHUNK);
+    const uidChunk = memoUids.slice(i, i + CHUNK);
+    const [attResult, relResult, reactResult] = await db.batch([
+      db.prepare(
+        `SELECT * FROM attachment WHERE memo_id IN (${createPlaceholders(idChunk.length)}) ORDER BY memo_id ASC, created_ts ASC`
+      ).bind(...idChunk),
+      db.prepare(
+        `SELECT * FROM memo_relation WHERE memo_id IN (${createPlaceholders(idChunk.length)}) OR related_memo_id IN (${createPlaceholders(idChunk.length)})`
+      ).bind(...idChunk, ...idChunk),
+      db.prepare(
+        `SELECT * FROM reaction WHERE content_id IN (${createPlaceholders(uidChunk.length)}) ORDER BY content_id ASC, created_ts ASC`
+      ).bind(...uidChunk),
+    ]);
+    attachmentRows.push(...(attResult.results as any[]));
+    relationRows.push(...(relResult.results as relationDB.RelationRow[]));
+    reactionRows.push(...(reactResult.results as reactionDB.ReactionRow[]));
+  }
+
+  const [creatorResult] = await db.batch([
+    db.prepare(
+      `SELECT id, username FROM user WHERE id IN (${createPlaceholders(creatorIds.length)})`
+    ).bind(...creatorIds),
   ]);
 
+  const creatorUsernameMap = new Map<number, string>();
+  for (const u of creatorResult.results as { id: number; username: string }[]) {
+    creatorUsernameMap.set(u.id, u.username);
+  }
+
+  // Build attachments map
   const attachmentsByMemoId = new Map<number, any[]>();
   for (const att of attachmentRows) {
     const memoUid = memoUidById.get(att.memo_id);
@@ -384,8 +362,49 @@ async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], creatorUsern
     attachmentsByMemoId.set(att.memo_id, attachments);
   }
 
-  const relationMemoIds = relationRows.flatMap((relation) => [relation.memo_id, relation.related_memo_id]);
-  const relationMemoMap = await getMemoSnippetMapByIds(db, relationMemoIds);
+  // Batch 2: snippet memos for relations + reaction usernames (1 D1 round trip)
+  const relationMemoIds = [...new Set(relationRows.flatMap((r) => [r.memo_id, r.related_memo_id]))];
+  const reactionCreatorIds = [...new Set(reactionRows.map((r) => r.creator_id))];
+
+  let snippetResults: memoDB.MemoRow[] = [];
+  let reactionUsernameMap = new Map<number, string>();
+
+  if (relationMemoIds.length > 0 || reactionCreatorIds.length > 0) {
+    const stmts: D1PreparedStatement[] = [];
+    const snippetIdx = relationMemoIds.length > 0 ? stmts.length : -1;
+    const reactUserIdx = reactionCreatorIds.length > 0 ? stmts.length : -1;
+
+    if (relationMemoIds.length > 0) {
+      stmts.push(
+        db.prepare(
+          `SELECT id, uid, content, visibility, creator_id FROM memo WHERE id IN (${createPlaceholders(relationMemoIds.length)})`
+        ).bind(...relationMemoIds)
+      );
+    }
+    if (reactionCreatorIds.length > 0) {
+      stmts.push(
+        db.prepare(
+          `SELECT id, username FROM user WHERE id IN (${createPlaceholders(reactionCreatorIds.length)})`
+        ).bind(...reactionCreatorIds)
+      );
+    }
+
+    const batchResults = await db.batch(stmts);
+
+    if (snippetIdx >= 0) {
+      snippetResults = batchResults[snippetIdx].results as memoDB.MemoRow[];
+    }
+    if (reactUserIdx >= 0) {
+      for (const u of batchResults[reactUserIdx].results as { id: number; username: string }[]) {
+        reactionUsernameMap.set(u.id, u.username);
+      }
+    }
+  }
+
+  const relationMemoMap = new Map<number, Pick<memoDB.MemoRow, "uid" | "content" | "visibility" | "creator_id">>();
+  for (const m of snippetResults) {
+    relationMemoMap.set(m.id, m);
+  }
 
   const relationsByMemoId = new Map<number, any[]>();
   for (const relation of relationRows) {
@@ -412,7 +431,6 @@ async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], creatorUsern
     }
   }
 
-  const reactionUsernameMap = await resolveUsernamesByIds(db, reactionRows.map((r) => r.creator_id));
   const reactionsByContentId = new Map<string, ReturnType<typeof formatReaction>[]>();
   for (const reaction of reactionRows) {
     const reactions = reactionsByContentId.get(reaction.content_id) || [];
@@ -421,7 +439,7 @@ async function enrichMemos(db: D1Database, memos: memoDB.MemoRow[], creatorUsern
   }
 
   return memos.map((memo) => ({
-    ...formatMemo(memo, creatorUsernameMap?.get(memo.creator_id)),
+    ...formatMemo(memo, creatorUsernameMap.get(memo.creator_id)),
     attachments: attachmentsByMemoId.get(memo.id) || [],
     relations: relationsByMemoId.get(memo.id) || [],
     reactions: reactionsByContentId.get(memo.uid) || [],
@@ -687,10 +705,8 @@ memoRoutes.get("/", authOptional, async (c) => {
 
   const nextPageToken = offset + pageSize < total ? btoa(String(offset + pageSize)) : "";
 
-  const usernameMap = await resolveCreatorUsernames(c.env.DB, memos);
-
   return c.json({
-    memos: await enrichMemos(c.env.DB, memos, usernameMap, user),
+    memos: await enrichMemos(c.env.DB, memos, user),
     nextPageToken,
     totalSize: total,
   });
@@ -947,9 +963,8 @@ memoRoutes.get("/:id/comments", authOptional, async (c) => {
     if (comment && !getMemoReadDeniedStatus(comment, user)) comments.push(comment);
   }
 
-  const usernameMap = await resolveCreatorUsernames(c.env.DB, comments);
   return c.json({
-    memos: await enrichMemos(c.env.DB, comments, usernameMap, user),
+    memos: await enrichMemos(c.env.DB, comments, user),
     nextPageToken: "",
     totalSize: comments.length,
   });

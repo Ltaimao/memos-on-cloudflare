@@ -1,7 +1,5 @@
-import { timestampDate } from "@bufbuild/protobuf/wkt";
-import dayjs from "dayjs";
 import { useMemo } from "react";
-import { type MemoTimeBasis, useView } from "@/contexts/ViewContext";
+import { useView } from "@/contexts/ViewContext";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 
@@ -15,11 +13,6 @@ export interface UseMemoSortingResult {
   orderBy: string;
 }
 
-const getMemoSortTime = (memo: Memo, timeBasis: MemoTimeBasis): Date | undefined => {
-  const timestamp = timeBasis === "update_time" ? memo.updateTime : memo.createTime;
-  return timestamp ? timestampDate(timestamp) : undefined;
-};
-
 export const useMemoSorting = (options: UseMemoSortingOptions = {}): UseMemoSortingResult => {
   const { pinnedFirst = false, state = State.NORMAL } = options;
   const { orderByTimeAsc, timeBasis } = useView();
@@ -30,24 +23,12 @@ export const useMemoSorting = (options: UseMemoSortingOptions = {}): UseMemoSort
     return pinnedFirst ? `pinned desc, ${timeOrder}` : timeOrder;
   }, [pinnedFirst, orderByTimeAsc, timeBasis]);
 
-  // Generate listSort function for client-side sorting
+  // Client-side state filter (sorting is handled server-side via orderBy)
   const listSort = useMemo(() => {
     return (memos: Memo[]): Memo[] => {
-      return memos
-        .filter((memo) => memo.state === state)
-        .sort((a, b) => {
-          // First, sort by pinned status if enabled
-          if (pinnedFirst && a.pinned !== b.pinned) {
-            return b.pinned ? 1 : -1;
-          }
-
-          // Then sort by the selected time field.
-          const aTime = getMemoSortTime(a, timeBasis);
-          const bTime = getMemoSortTime(b, timeBasis);
-          return orderByTimeAsc ? dayjs(aTime).unix() - dayjs(bTime).unix() : dayjs(bTime).unix() - dayjs(aTime).unix();
-        });
+      return memos.filter((memo) => memo.state === state);
     };
-  }, [pinnedFirst, state, orderByTimeAsc, timeBasis]);
+  }, [state]);
 
   return { listSort, orderBy };
 };
