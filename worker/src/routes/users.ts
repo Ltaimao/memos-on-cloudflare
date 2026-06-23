@@ -189,31 +189,40 @@ userRoutes.get("/:action", authOptional, async (c) => {
     }
 
     const users = await userDB.listUsers(c.env.DB, { rowStatus: "NORMAL" });
-    const stats = [];
-    for (const user of users) {
-      const { count } = await c.env.DB.prepare(
-        "SELECT COUNT(*) as count FROM memo WHERE creator_id = ? AND row_status = 'NORMAL' AND visibility = 'PUBLIC'"
-      ).bind(user.id).first<{ count: number }>() ?? { count: 0 };
 
-      const { results: tagRows } = await c.env.DB.prepare(
-        `SELECT mt.tag, COUNT(*) as cnt FROM memo_tag mt
+    // 用 GROUP BY 替代 per-user 循环，固定 2 次 D1 查询（db.batch 一次往返）
+    const [memoCountResult, tagResult] = await c.env.DB.batch([
+      c.env.DB.prepare(
+        `SELECT creator_id, COUNT(*) as count FROM memo
+         WHERE row_status = 'NORMAL' AND visibility = 'PUBLIC'
+         GROUP BY creator_id`
+      ),
+      c.env.DB.prepare(
+        `SELECT mt.creator_id, mt.tag, COUNT(*) as cnt FROM memo_tag mt
          JOIN memo m ON m.id = mt.memo_id AND m.row_status = 'NORMAL' AND m.visibility = 'PUBLIC'
-         WHERE mt.creator_id = ?
-         GROUP BY mt.tag`
-      ).bind(user.id).all<{ tag: string; cnt: number }>();
+         GROUP BY mt.creator_id, mt.tag`
+      ),
+    ]);
 
-      const tagCount: Record<string, number> = {};
-      for (const row of tagRows) {
-        tagCount[row.tag] = row.cnt;
-      }
-
-      stats.push({
-        name: `users/${user.username}/stats`,
-        username: user.username,
-        memoCount: count,
-        tagCount,
-      });
+    const memoCountByCreator = new Map<number, number>();
+    for (const row of memoCountResult.results as { creator_id: number; count: number }[]) {
+      memoCountByCreator.set(row.creator_id, row.count);
     }
+
+    const tagCountByCreator = new Map<number, Record<string, number>>();
+    for (const row of tagResult.results as { creator_id: number; tag: string; cnt: number }[]) {
+      const tagCount = tagCountByCreator.get(row.creator_id) || {};
+      tagCount[row.tag] = row.cnt;
+      tagCountByCreator.set(row.creator_id, tagCount);
+    }
+
+    const stats = users.map((user) => ({
+      name: `users/${user.username}/stats`,
+      username: user.username,
+      memoCount: memoCountByCreator.get(user.id) || 0,
+      tagCount: tagCountByCreator.get(user.id) || {},
+    }));
+
     const response = { stats };
     await putCachedJson(c.env.CACHE, "user:stats:all:public", response, 60);
     return c.json(response);

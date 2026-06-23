@@ -31,12 +31,12 @@ ALTER TABLE memo ADD COLUMN year_month_weekday TEXT
   GENERATED ALWAYS AS (strftime('%Y-%m-%w', created_ts + 28800, 'unixepoch')) VIRTUAL;
 
 -- 4. 重建索引
-CREATE INDEX idx_memo_month_day ON memo(month_day);
-CREATE INDEX idx_memo_year ON memo(year);
-CREATE INDEX idx_memo_year_day ON memo(year_day);
-CREATE INDEX idx_memo_year_month_weekday ON memo(year_month_weekday);
+CREATE INDEX IF NOT EXISTS idx_memo_month_day ON memo(month_day);
+CREATE INDEX IF NOT EXISTS idx_memo_year ON memo(year);
+CREATE INDEX IF NOT EXISTS idx_memo_year_day ON memo(year_day);
+CREATE INDEX IF NOT EXISTS idx_memo_year_month_weekday ON memo(year_month_weekday);
 
-CREATE INDEX idx_memo_creator_month_day ON memo(creator_id, month_day);
-CREATE INDEX idx_memo_creator_year ON memo(creator_id, year);
-CREATE INDEX idx_memo_creator_year_day ON memo(creator_id, year_day);
-CREATE INDEX idx_memo_creator_year_month_weekday ON memo(creator_id, year_month_weekday);
+CREATE INDEX IF NOT EXISTS idx_memo_creator_month_day ON memo(creator_id, month_day);
+CREATE INDEX IF NOT EXISTS idx_memo_creator_year ON memo(creator_id, year);
+CREATE INDEX IF NOT EXISTS idx_memo_creator_year_day ON memo(creator_id, year_day);
+CREATE INDEX IF NOT EXISTS idx_memo_creator_year_month_weekday ON memo(creator_id, year_month_weekday);

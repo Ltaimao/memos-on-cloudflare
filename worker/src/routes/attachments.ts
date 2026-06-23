@@ -291,14 +291,14 @@ attachmentRoutes.get("/", authRequired, async (c) => {
 
   const whereClause = `WHERE ${whereConditions.join(" AND ")}`;
 
-  const countResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as total FROM attachment ${whereClause}`
-  ).bind(...params).first<{ total: number }>();
-  const total = countResult?.total ?? 0;
-
-  const { results } = await c.env.DB.prepare(
-    `SELECT * FROM attachment ${whereClause} ORDER BY created_ts DESC LIMIT ? OFFSET ?`
-  ).bind(...params, pageSize, offset).all<AttachmentRow>();
+  const [countResult, dataResult] = await c.env.DB.batch([
+    c.env.DB.prepare(`SELECT COUNT(*) as total FROM attachment ${whereClause}`).bind(...params),
+    c.env.DB.prepare(
+      `SELECT * FROM attachment ${whereClause} ORDER BY created_ts DESC LIMIT ? OFFSET ?`
+    ).bind(...params, pageSize, offset),
+  ]);
+  const total = (countResult.results?.[0] as { total: number } | undefined)?.total ?? 0;
+  const results = (dataResult.results || []) as AttachmentRow[];
 
   const nextPageToken = offset + pageSize < total ? btoa(String(offset + pageSize)) : "";
 

@@ -111,6 +111,18 @@ fileRoutes.get("/attachments/:uid/:filename", authOptional, async (c) => {
   const uid = c.req.param("uid");
   const filename = c.req.param("filename");
 
+  // 提前检查 CDN 边缘缓存：只有被判定为公开可访问的响应才会被写入缓存（见下方 cacheControl 分支），
+  // 命中即可安全跳过权限校验和 D1 查询。Range 请求不走快速路径。
+  if (!c.req.header("Range")) {
+    const edgeCache = caches.default;
+    const cachedHit = await edgeCache.match(c.req.raw);
+    if (cachedHit) {
+      const resp = new Response(cachedHit.body, cachedHit);
+      resp.headers.set("X-Cache", "HIT");
+      return resp;
+    }
+  }
+
   const att = await c.env.DB.prepare(
     "SELECT * FROM attachment WHERE uid = ?"
   ).bind(uid).first<{ id: number; creator_id: number; type: string; size: number; reference: string; memo_id: number | null; filename: string }>();

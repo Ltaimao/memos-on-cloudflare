@@ -54,11 +54,11 @@ interface CompileContext {
 
 const BOOLEAN_FIELD_SQL: Record<string, string> = {
   pinned: "memo.pinned",
-  has_link: "COALESCE(json_extract(memo.payload, '$.property.hasLink'), 0)",
-  has_task_list: "COALESCE(json_extract(memo.payload, '$.property.hasTaskList'), 0)",
-  has_code: "COALESCE(json_extract(memo.payload, '$.property.hasCode'), 0)",
-  has_incomplete_task: "COALESCE(json_extract(memo.payload, '$.property.hasIncompleteTask'), 0)",
-  has_incomplete_tasks: "COALESCE(json_extract(memo.payload, '$.property.hasIncompleteTask'), 0)",
+  has_link: "memo.has_link",
+  has_task_list: "memo.has_task_list",
+  has_code: "memo.has_code",
+  has_incomplete_task: "memo.has_incomplete_task",
+  has_incomplete_tasks: "memo.has_incomplete_task",
 };
 
 const SCALAR_FIELD_SQL: Record<string, string> = {

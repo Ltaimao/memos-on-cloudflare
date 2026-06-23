@@ -214,19 +214,27 @@ async function getMemoAttachments(db: D1Database, memoId: number, memoUid: strin
 
 async function getMemoRelations(db: D1Database, memoId: number, user?: UserPayload) {
   const relations = await relationDB.listRelations(db, memoId);
-  const resolved = await Promise.all(
-    relations.map(async (relation) => {
-      const memo = await memoDB.getMemoById(db, relation.memo_id);
-      const relatedMemo = await memoDB.getMemoById(db, relation.related_memo_id);
+  if (relations.length === 0) return [];
+
+  const relatedIds = [...new Set(relations.flatMap((r) => [r.memo_id, r.related_memo_id]))];
+  const { results } = await db.prepare(
+    `SELECT id, uid, content, visibility, creator_id FROM memo WHERE id IN (${relatedIds.map(() => "?").join(", ")})`
+  ).bind(...relatedIds).all<Pick<memoDB.MemoRow, "id" | "uid" | "content" | "visibility" | "creator_id">>();
+
+  const memoById = new Map(results.map((m) => [m.id, m]));
+
+  return relations
+    .map((relation) => {
+      const memo = memoById.get(relation.memo_id);
+      const relatedMemo = memoById.get(relation.related_memo_id);
       const formattedRelation = {
-        memo: formatMemoRelationSnippet(memo || undefined, user),
-        relatedMemo: formatMemoRelationSnippet(relatedMemo || undefined, user),
+        memo: formatMemoRelationSnippet(memo, user),
+        relatedMemo: formatMemoRelationSnippet(relatedMemo, user),
         type: relation.type,
       };
       return formattedRelation.memo && formattedRelation.relatedMemo ? formattedRelation : undefined;
-    }),
-  );
-  return resolved.filter((relation) => relation !== undefined);
+    })
+    .filter((relation) => relation !== undefined);
 }
 
 function formatReaction(reaction: reactionDB.ReactionRow, creatorUsername?: string) {
