@@ -33,6 +33,10 @@ export function useTimeTravelParam(): Record<string, string> | undefined {
       const w = now.getDay(); // 0-6
       return { sameWeekdayInMonth: `${year}-${mm}-${w}`, tzOffset };
     }
+    case "randomRecall": {
+      // 每次用不同值以跳过前端缓存
+      return { randomRecall: String(Date.now()) };
+    }
     default:
       return undefined;
   }

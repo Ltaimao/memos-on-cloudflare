@@ -1,11 +1,12 @@
 import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
 
-export type TimeTravelMode = "sameDayAcrossYears" | "sameDayEachMonth" | "sameWeekdayInMonth";
+export type TimeTravelMode = "sameDayAcrossYears" | "sameDayEachMonth" | "sameWeekdayInMonth" | "randomRecall";
 
 const MODES: { value: TimeTravelMode; label: string; desc: string }[] = [
   { value: "sameDayAcrossYears", label: "当年今日", desc: "往年今日的记录" },
   { value: "sameDayEachMonth", label: "每月今日", desc: "每月这一天的记录" },
   { value: "sameWeekdayInMonth", label: "每周同期", desc: "当月每周几的记录" },
+  { value: "randomRecall", label: "随机回忆", desc: "随机回顾 5 条记录" },
 ];
 
 const TimeTravelToggle = () => {

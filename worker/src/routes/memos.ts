@@ -607,7 +607,33 @@ memoRoutes.get("/", authOptional, async (c) => {
   const sameDayAcrossYears = c.req.query("sameDayAcrossYears") || "";
   const sameDayEachMonth = c.req.query("sameDayEachMonth") || "";
   const sameWeekdayInMonth = c.req.query("sameWeekdayInMonth") || "";
+  const randomRecall = c.req.query("randomRecall") || "";
   const tzOffset = Number(c.req.query("tzOffset")) || 0;
+
+  // 随机回忆：随机选取 5 条私有/工作区 memo
+  if (randomRecall && user) {
+    const { results } = await c.env.DB.prepare(
+      "SELECT id FROM memo WHERE creator_id = ? AND row_status = 'NORMAL' AND visibility IN ('PRIVATE', 'PROTECTED')"
+    ).bind(user.id).all<{ id: number }>();
+
+    const ids = results.map((r) => r.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    const selected = ids.slice(0, 5);
+
+    if (selected.length === 0) {
+      return c.json({ memos: [], total: 0, nextPageToken: "" });
+    }
+
+    const placeholders = selected.map(() => "?").join(",");
+    const { results: memos } = await c.env.DB.prepare(
+      `SELECT * FROM memo WHERE id IN (${placeholders})`
+    ).bind(...selected).all<memoDB.MemoRow>();
+
+    return c.json({ memos, total: memos.length, nextPageToken: "" });
+  }
 
   let offset = 0;
   if (pageToken) {
