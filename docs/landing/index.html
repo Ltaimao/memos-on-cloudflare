@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memos on Cloudflare - 为写 20 年而设计的记事本</title>
+  <meta name="description" content="将 Memos 笔记应用部署到 Cloudflare 边缘平台，零运维、零成本、全球加速。" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwindcss.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['system-ui', '-apple-system', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    html { background: #0f172a; }
+    .glass { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(148, 163, 184, 0.1); }
+    .gradient-text { background: linear-gradient(135deg, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .glow { box-shadow: 0 0 40px rgba(59, 130, 246, 0.15); }
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+    .float { animation: float 6s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-[#0f172a] text-slate-200 antialiased">
+
+  <!-- Hero -->
+  <section class="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.15),transparent_60%)]"></div>
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-3xl"></div>
+
+    <div class="relative z-10 text-center max-w-3xl mx-auto">
+      <img src="https://t.uqcoin.com/logo.webp" alt="Logo" class="w-20 h-20 mx-auto mb-6 rounded-2xl shadow-lg float" />
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
+        <span class="gradient-text">Memos on Cloudflare</span>
+      </h1>
+      <p class="text-xl sm:text-2xl text-slate-400 mb-3 font-light">为写 20 年而设计的记事本</p>
+      <p class="text-base sm:text-lg text-slate-500 mb-10 max-w-xl mx-auto">
+        部署在 Cloudflare 边缘，零运维、零成本、全球加速。<br />
+        你的记忆，值得一个永远不会关机的家。
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="https://github.com/Ltaimao/memos-on-cloudflare" target="_blank"
+          class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-600/20">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          开始部署
+        </a>
+        <a href="https://t.uqcoin.com" target="_blank"
+          class="inline-flex items-center justify-center gap-2 px-8 py-3.5 glass hover:bg-slate-700/50 text-slate-300 font-medium rounded-xl transition-colors">
+          在线体验
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="absolute bottom-8 animate-bounce">
+      <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="py-24 px-6">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4">功能亮点</h2>
+      <p class="text-slate-500 text-center mb-16 max-w-lg mx-auto">不只是记事本，而是一个能陪你走过二十年的数字记忆库。</p>
+
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-8 glow">
+          <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">时间旅行</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">当年今日、每月今日、每周同期、随机回忆。四种方式穿越你的记忆，重新发现被遗忘的想法。</p>
+        </div>
+
+        <div class="glass rounded-2xl p-8 glow">
+          <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">网页剪藏</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">浏览器书签工具，一键保存任意网页。Readability 正文提取 + Turndown 转 Markdown，告别复制粘贴。</p>
+        </div>
+
+        <div class="glass rounded-2xl p-8 glow">
+          <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">AI 语音转写</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">内置 Cloudflare Workers AI（Whisper），录音即转文字。想到什么，说出来就好。</p>
+        </div>
+
+        <div class="glass rounded-2xl p-8 glow">
+          <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">全球边缘加速</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">部署在 Cloudflare 全球 300+ 边缘节点，无论你在地球的哪个角落，毫秒级响应。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="py-20 px-6 border-t border-slate-800">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 class="text-3xl sm:text-4xl font-bold mb-4">技术栈</h2>
+      <p class="text-slate-500 mb-12">全栈运行在 Cloudflare 边缘平台</p>
+      <div class="flex flex-wrap justify-center gap-8 text-slate-400">
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#f6821f]/10 flex items-center justify-center text-xl font-bold text-[#f6821f]">W</div>
+          <span class="text-sm">Workers</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#3b82f6]/10 flex items-center justify-center text-xl font-bold text-[#3b82f6]">D1</div>
+          <span class="text-sm">SQLite</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#f6821f]/10 flex items-center justify-center text-xl font-bold text-[#f6821f]">R2</div>
+          <span class="text-sm">对象存储</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#f6821f]/10 flex items-center justify-center text-xl font-bold text-[#f6821f]">KV</div>
+          <span class="text-sm">缓存</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#f6821f]/10 flex items-center justify-center text-xl font-bold text-[#f6821f]">AI</div>
+          <span class="text-sm">Workers AI</span>
+        </div>
+        <div class="w-px h-14 bg-slate-800 mx-2 hidden sm:block"></div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#61dafb]/10 flex items-center justify-center text-xl font-bold text-[#61dafb]">R</div>
+          <span class="text-sm">React</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#e36002]/10 flex items-center justify-center text-xl font-bold text-[#e36002]">H</div>
+          <span class="text-sm">Hono</span>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-14 h-14 rounded-xl bg-[#3178c6]/10 flex items-center justify-center text-xl font-bold text-[#3178c6]">TS</div>
+          <span class="text-sm">TypeScript</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="py-20 px-6">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4">为什么选 Cloudflare 版？</h2>
+      <p class="text-slate-500 text-center mb-12">和原版 Memos 的关键区别</p>
+
+      <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-700/50">
+              <th class="text-left p-4 text-slate-500 font-normal"></th>
+              <th class="p-4 text-slate-500 font-normal">原版 Memos</th>
+              <th class="p-4 text-blue-400 font-medium">Memos on CF</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-300">
+            <tr class="border-b border-slate-800/50"><td class="p-4 text-slate-500">部署</td><td class="p-4 text-center">Docker + 服务器</td><td class="p-4 text-center text-emerald-400">wrangler deploy</td></tr>
+            <tr class="border-b border-slate-800/50"><td class="p-4 text-slate-500">运维</td><td class="p-4 text-center">需要维护</td><td class="p-4 text-center text-emerald-400">零运维</td></tr>
+            <tr class="border-b border-slate-800/50"><td class="p-4 text-slate-500">费用</td><td class="p-4 text-center">服务器费用</td><td class="p-4 text-center text-emerald-400">Free Plan 够用</td></tr>
+            <tr class="border-b border-slate-800/50"><td class="p-4 text-slate-500">全球访问</td><td class="p-4 text-center">单机房</td><td class="p-4 text-center text-emerald-400">300+ 边缘节点</td></tr>
+            <tr><td class="p-4 text-slate-500">数据库</td><td class="p-4 text-center">SQLite 本地文件</td><td class="p-4 text-center text-emerald-400">D1 托管 SQLite</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Deploy -->
+  <section class="py-20 px-6 border-t border-slate-800">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4">3 步部署</h2>
+      <p class="text-slate-500 text-center mb-12">从零到上线，不超过 5 分钟</p>
+
+      <div class="space-y-6">
+        <div class="glass rounded-2xl p-6 flex gap-5">
+          <div class="shrink-0 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">1</div>
+          <div>
+            <h3 class="font-semibold mb-2">克隆仓库 & 安装依赖</h3>
+            <pre class="bg-slate-900/80 rounded-lg p-4 text-sm text-slate-300 overflow-x-auto"><code>git clone https://github.com/Ltaimao/memos-on-cloudflare.git
+cd memos-on-cloudflare && npm install</code></pre>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6 flex gap-5">
+          <div class="shrink-0 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">2</div>
+          <div>
+            <h3 class="font-semibold mb-2">创建 Cloudflare 资源</h3>
+            <pre class="bg-slate-900/80 rounded-lg p-4 text-sm text-slate-300 overflow-x-auto"><code>wrangler d1 create cfmemos-db
+wrangler r2 bucket create cfmemos
+wrangler kv namespace create cfmemos-kv</code></pre>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-6 flex gap-5">
+          <div class="shrink-0 w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-lg">3</div>
+          <div>
+            <h3 class="font-semibold mb-2">初始化数据库 & 部署</h3>
+            <pre class="bg-slate-900/80 rounded-lg p-4 text-sm text-slate-300 overflow-x-auto"><code>npm run db:migrate:remote
+npm run deploy</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-16 px-6 border-t border-slate-800">
+    <div class="max-w-3xl mx-auto text-center">
+      <img src="https://t.uqcoin.com/logo.webp" alt="Logo" class="w-12 h-12 mx-auto mb-4 rounded-xl" />
+      <p class="text-xl text-slate-400 mb-2 font-light">为写 20 年而设计的记事本</p>
+      <p class="text-sm text-slate-600 mb-8">你的记忆，值得一个永远不会关机的家。</p>
+      <div class="flex justify-center gap-4">
+        <a href="https://github.com/Ltaimao/memos-on-cloudflare" target="_blank"
+          class="inline-flex items-center gap-2 px-6 py-2.5 glass rounded-lg text-sm text-slate-300 hover:text-white transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="https://t.uqcoin.com" target="_blank"
+          class="inline-flex items-center gap-2 px-6 py-2.5 glass rounded-lg text-sm text-slate-300 hover:text-white transition-colors">
+          在线演示
+        </a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
