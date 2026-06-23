@@ -41,7 +41,7 @@ export const useFilteredMemoStats = (options: UseFilteredMemoStatsOptions = {}):
   // memos are always excluded regardless of backend version.
   // other contexts: fetch with default params for the fallback memo-based path.
   const exploreVisibilityFilter = currentUser != null ? 'visibility in ["PUBLIC", "PROTECTED"]' : 'visibility in ["PUBLIC"]';
-  const memoQueryParams = context === "explore" ? { filter: exploreVisibilityFilter, pageSize: 1000 } : {};
+  const memoQueryParams = context === "explore" ? { filter: exploreVisibilityFilter, pageSize: 200 } : {};
   const { data: memosResponse, isLoading: isLoadingMemos } = useMemos(memoQueryParams);
 
   const data = useMemo(() => {

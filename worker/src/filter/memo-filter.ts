@@ -528,17 +528,26 @@ function compileTagTreeMatch(values: string[]): MemoFilterWhere {
     return { sql: "0 = 1", params: [] };
   }
 
-  const parts: string[] = [];
-  const params: MemoFilterParam[] = [];
-  for (const value of values) {
-    const prefix = `${value}/`;
-    parts.push("(mt.tag = ? OR INSTR(mt.tag, ?) = 1)");
-    params.push(value, prefix);
+  // D1 limit: 100 SQL variables per query. Each tag uses 2 variables.
+  // Chunk into groups of 40 to stay under the limit with other conditions.
+  const CHUNK_SIZE = 40;
+  const orParts: string[] = [];
+  const allParams: MemoFilterParam[] = [];
+
+  for (let i = 0; i < values.length; i += CHUNK_SIZE) {
+    const chunk = values.slice(i, i + CHUNK_SIZE);
+    const parts: string[] = [];
+    for (const value of chunk) {
+      const prefix = `${value}/`;
+      parts.push("(mt.tag = ? OR INSTR(mt.tag, ?) = 1)");
+      allParams.push(value, prefix);
+    }
+    orParts.push(`(${parts.join(" OR ")})`);
   }
 
   return {
-    sql: `EXISTS (SELECT 1 FROM memo_tag mt WHERE mt.memo_id = memo.id AND (${parts.join(" OR ")}))`,
-    params,
+    sql: `EXISTS (SELECT 1 FROM memo_tag mt WHERE mt.memo_id = memo.id AND ${orParts.join(" OR ")})`,
+    params: allParams,
   };
 }
 
