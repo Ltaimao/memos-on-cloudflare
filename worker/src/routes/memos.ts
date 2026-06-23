@@ -632,7 +632,8 @@ memoRoutes.get("/", authOptional, async (c) => {
       `SELECT * FROM memo WHERE id IN (${placeholders})`
     ).bind(...selected).all<memoDB.MemoRow>();
 
-    return c.json({ memos, total: memos.length, nextPageToken: "" });
+    const formatted = memos.map((m) => formatMemo(m, user.username));
+    return c.json({ memos: formatted, total: formatted.length, nextPageToken: "" });
   }
 
   let offset = 0;
