@@ -46,9 +46,9 @@ const MemoHeader: React.FC<MemoHeaderProps> = ({ showCreator, showVisibility, sh
 
   const birthday = (userGeneralSetting as any)?.birthday as string | undefined;
   const showAge = (userGeneralSetting as any)?.showAge as boolean | undefined;
-  // 只在私有/工作区 memo 显示年龄（Home 页），公开 memo（Explore 页）不显示
-  const isPrivateOrProtected = memo.visibility === Visibility.PRIVATE || memo.visibility === Visibility.PROTECTED;
-  const ageText = birthday && showAge && createTime && isPrivateOrProtected ? calcAgeAt(birthday, createTime) : undefined;
+  // 只在当前用户自己的 memo 上显示年龄（Home 页），其他用户的 memo 不显示（Explore 页）
+  const isOwnMemo = currentUser?.name === memo.creator;
+  const ageText = birthday && showAge && createTime && isOwnMemo ? calcAgeAt(birthday, createTime) : undefined;
 
   const navigateTo = useNavigateTo();
   const handleGotoMemoDetailPage = useCallback(() => {
