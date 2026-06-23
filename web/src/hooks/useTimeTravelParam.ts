@@ -1,6 +1,6 @@
 import type { TimeTravelMode } from "@/components/TimeTravelToggle";
 import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 
 /**
  * Computes the extra query param string for time travel filters.
@@ -8,6 +8,9 @@ import { useMemo, useRef } from "react";
  */
 export function useTimeTravelParam(): Record<string, string> | undefined {
   const { filters } = useMemoFilterContext();
+  const recallCounter = useRef(0);
+  const prevActive = useRef(false);
+
   const timeTravelFilter = filters.find((f) => f.factor === "timeTravel");
   if (!timeTravelFilter) return undefined;
 
@@ -17,8 +20,6 @@ export function useTimeTravelParam(): Record<string, string> | undefined {
   const tzOffset = String(-now.getTimezoneOffset()); // 分钟数，UTC+8 → 480
 
   // 随机回忆：用计数器确保每次激活时值不同，但在同一激活周期内保持稳定
-  const recallCounter = useRef(0);
-  const prevActive = useRef(false);
   if (mode === "randomRecall") {
     if (!prevActive.current) {
       recallCounter.current++;
